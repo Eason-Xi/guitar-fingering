@@ -1,0 +1,1322 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>吉他指法查询器 · 和弦与音阶指板</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%230D0908'/%3E%3Ccircle cx='16' cy='16' r='11' fill='none' stroke='%23D3A24E' stroke-width='1.2'/%3E%3Ccircle cx='16' cy='16' r='7' fill='none' stroke='%23D3A24E' stroke-width='.8'/%3E%3Ccircle cx='16' cy='16' r='2.6' fill='%23D3A24E'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="https://miaoda.feishu.cn/fonts/css2?family=Noto+Serif+SC:wght@400;600;700&family=Noto+Sans+SC:wght@300;400;500;700&family=EB+Garamond:ital,wght@0,400;0,500;0,600;1,400&display=swap">
+<style>
+/* ========== 基础 ========== */
+:root{
+  --bg:#0D0908;
+  --panel:#171110;
+  --panel-2:#1C1513;
+  --line:rgba(232,214,182,.14);
+  --line-soft:rgba(232,214,182,.07);
+  --bone:#E9DDC5;
+  --bone-2:#C3B197;
+  --dim:#9A8871;
+  --mute:#6C5C4C;
+  --brass:#D3A24E;
+  --brass-deep:#8C672C;
+  --teal:#6F9A8C;
+  --serif:'EB Garamond','Noto Serif SC',Georgia,'Songti SC',serif;
+  --sans:'Noto Sans SC',-apple-system,BlinkMacSystemFont,'PingFang SC','Microsoft YaHei',sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--bg);
+  color:var(--bone);
+  font-family:var(--sans);
+  font-size:14px;
+  line-height:1.6;
+  -webkit-font-smoothing:antialiased;
+  overflow-x:hidden;
+}
+body::before{
+  content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
+  background:
+    radial-gradient(120% 70% at 50% -10%, rgba(211,162,78,.07), transparent 62%),
+    repeating-linear-gradient(91deg, rgba(255,255,255,.013) 0 1px, transparent 1px 7px),
+    repeating-linear-gradient(0deg, rgba(0,0,0,.22) 0 1px, transparent 1px 3px);
+}
+body::after{
+  content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
+  background:radial-gradient(90% 70% at 50% 45%, transparent 45%, rgba(0,0,0,.55) 100%);
+}
+.page{position:relative;z-index:1;max-width:1240px;margin:0 auto;padding:0 30px 70px}
+button{font:inherit;color:inherit;background:none;border:none;cursor:pointer}
+select{font:inherit}
+a{color:inherit}
+
+/* ========== 顶栏 ========== */
+.top{
+  position:sticky;top:0;z-index:20;
+  display:flex;align-items:center;gap:26px;
+  padding:16px 0 15px;
+  background:linear-gradient(180deg,rgba(13,9,8,.98) 70%,rgba(13,9,8,.86) 100%);
+  border-bottom:1px solid var(--line);
+  backdrop-filter:blur(0px);
+}
+.brand{display:flex;align-items:center;gap:12px;flex-shrink:0}
+.mark{width:30px;height:30px;display:block;flex-shrink:0}
+.brand h1{
+  font-family:var(--serif);font-weight:500;font-size:23px;letter-spacing:.12em;
+  margin:0;line-height:1.1;color:var(--bone);
+}
+.brand .sub{
+  display:block;font-family:var(--sans);font-size:8.5px;letter-spacing:.26em;
+  color:var(--mute);margin-top:4px;
+}
+.tabs{display:flex;gap:2px;flex-shrink:0}
+.tab{
+  position:relative;padding:7px 14px 9px;font-size:13px;color:var(--dim);
+  letter-spacing:.06em;transition:color .18s;
+}
+.tab:hover{color:var(--bone-2)}
+.tab[aria-selected="true"]{color:var(--brass)}
+.tab[aria-selected="true"]::after{
+  content:'';position:absolute;left:14px;right:14px;bottom:2px;height:1px;background:var(--brass);
+}
+.opts{margin-left:auto;display:flex;align-items:center;gap:14px;flex-wrap:wrap;justify-content:flex-end}
+.opt{display:flex;align-items:center;gap:7px;font-size:11px;color:var(--mute);letter-spacing:.08em}
+.opt select{
+  appearance:none;-webkit-appearance:none;
+  background:transparent;color:var(--bone-2);border:1px solid var(--line);
+  border-radius:2px;padding:5px 22px 5px 8px;font-size:11.5px;
+  background-image:linear-gradient(45deg,transparent 50%,var(--dim) 50%),linear-gradient(135deg,var(--dim) 50%,transparent 50%);
+  background-position:calc(100% - 11px) 50%,calc(100% - 7px) 50%;
+  background-size:4px 4px,4px 4px;background-repeat:no-repeat;
+  cursor:pointer;
+}
+.opt select:focus-visible,.tab:focus-visible,button:focus-visible{outline:1px solid var(--brass);outline-offset:2px}
+.acc{display:flex;border:1px solid var(--line);border-radius:2px;overflow:hidden}
+.acc button{
+  width:26px;height:26px;font-family:var(--serif);font-size:13px;color:var(--dim);
+  display:flex;align-items:center;justify-content:center;transition:all .16s;
+}
+.acc button+button{border-left:1px solid var(--line)}
+.acc button[aria-pressed="true"]{background:rgba(211,162,78,.12);color:var(--brass)}
+.acc button:hover{color:var(--bone)}
+.lever{
+  display:flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:2px;
+  padding:4px 9px;font-size:11px;color:var(--dim);height:26px;transition:all .16s;
+}
+.lever[aria-pressed="true"]{border-color:var(--brass);color:var(--brass);background:rgba(211,162,78,.08)}
+.lever::before{
+  content:'';width:9px;height:9px;border-radius:50%;border:1px solid currentColor;
+  display:block;flex-shrink:0;
+}
+.lever[aria-pressed="true"]::before{background:currentColor}
+
+/* ========== 选择台 ========== */
+.console{
+  margin-top:22px;
+  border:1px solid var(--line);
+  background:linear-gradient(180deg,rgba(30,23,21,.9),rgba(22,17,16,.9));
+  border-radius:3px;
+  padding:18px 20px 20px;
+  position:relative;
+}
+.console::before{
+  content:'';position:absolute;left:0;right:0;top:0;height:1px;
+  background:linear-gradient(90deg,transparent,rgba(233,221,197,.22),transparent);
+}
+.crow{display:flex;align-items:flex-start;gap:18px}
+.crow+.crow{margin-top:14px;padding-top:14px;border-top:1px solid var(--line-soft)}
+.clabel{
+  flex:0 0 62px;padding-top:11px;
+  font-size:11px;letter-spacing:.16em;color:var(--mute);
+}
+.cbody{flex:1;min-width:0}
+.roots{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:5px}
+.root{
+  position:relative;height:46px;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  border:1px solid var(--line);border-radius:2px;background:rgba(255,255,255,.012);
+  font-family:var(--serif);font-size:17px;line-height:1;color:var(--bone-2);
+  transition:border-color .16s,color .16s,background .16s;
+  padding-top:2px;
+}
+.root .alt{font-family:var(--sans);font-size:8.5px;color:var(--mute);letter-spacing:.04em;margin-top:3px;line-height:1}
+.root:hover{border-color:rgba(232,214,182,.32);color:var(--bone);background:rgba(232,214,182,.035)}
+.root[aria-pressed="true"]{
+  border-color:var(--brass);color:var(--brass);background:rgba(211,162,78,.09);
+}
+.root[aria-pressed="true"] .alt{color:rgba(211,162,78,.65)}
+.root[aria-pressed="true"]::after{
+  content:'';position:absolute;right:4px;top:4px;width:4px;height:4px;background:var(--brass);
+}
+.quals{display:flex;flex-wrap:wrap;gap:5px}
+.qual{
+  padding:6px 11px 7px;border:1px solid var(--line);border-radius:2px;
+  font-size:12px;color:var(--bone-2);letter-spacing:.03em;line-height:1.35;
+  display:flex;flex-direction:column;align-items:center;gap:1px;
+  transition:border-color .16s,color .16s,background .16s;
+}
+.qual .qs{font-family:var(--serif);font-size:12.5px;color:var(--dim);letter-spacing:.01em}
+.qual:hover{border-color:rgba(232,214,182,.32);color:var(--bone)}
+.qual[aria-pressed="true"]{border-color:var(--brass);background:rgba(211,162,78,.09);color:var(--brass)}
+.qual[aria-pressed="true"] .qs{color:rgba(211,162,78,.7)}
+
+/* ========== 和弦总览 ========== */
+.summary{display:flex;align-items:flex-end;gap:26px;margin-top:30px;flex-wrap:wrap}
+.symblock{display:flex;align-items:flex-end;gap:18px;flex-wrap:wrap}
+.symwrap{display:flex;align-items:baseline;gap:4px}
+.sym{
+  font-family:var(--serif);font-weight:500;font-size:74px;line-height:.86;
+  letter-spacing:-.01em;color:var(--bone);
+}
+.sym sub{font-size:.42em;font-weight:400;vertical-align:baseline;position:relative;bottom:.12em;color:var(--brass);letter-spacing:0}
+.symmeta{padding-bottom:4px}
+.qlabel{font-size:12.5px;letter-spacing:.1em;color:var(--dim);margin-bottom:5px}
+.tones{display:flex;align-items:center;gap:9px;flex-wrap:wrap;font-family:var(--serif);font-size:20px;color:var(--bone)}
+.tones .sep{color:var(--mute);font-size:13px}
+.degrees{display:flex;gap:5px;margin-top:6px}
+.deg{
+  min-width:22px;height:19px;border:1px solid var(--line);border-radius:2px;
+  display:inline-flex;align-items:center;justify-content:center;
+  font-size:10.5px;color:var(--dim);font-family:var(--sans);letter-spacing:.02em;
+}
+.deg.root{color:var(--brass);border-color:rgba(211,162,78,.4)}
+.deg.guide{color:var(--teal);border-color:rgba(111,154,140,.4)}
+.sumbar{margin-left:auto;display:flex;gap:26px;padding-bottom:6px;flex-wrap:wrap}
+.stat{display:flex;flex-direction:column;gap:2px}
+.stat b{font-family:var(--serif);font-size:23px;font-weight:500;line-height:1;color:var(--bone);letter-spacing:.02em}
+.stat span{font-size:10.5px;letter-spacing:.12em;color:var(--mute)}
+
+/* ========== 按法卡片 ========== */
+.sec-head{
+  display:flex;align-items:center;gap:12px;margin:34px 0 14px;
+}
+.sec-head::before{content:'';width:16px;height:1px;background:var(--brass);flex-shrink:0}
+.sec-head h2{font-size:11.5px;font-weight:400;letter-spacing:.2em;color:var(--dim);margin:0}
+.sec-head .hint{font-size:11px;color:var(--mute);letter-spacing:.04em}
+.sec-head .side{margin-left:auto;display:flex;gap:8px}
+.mini{
+  font-size:11px;color:var(--dim);border:1px solid var(--line);border-radius:2px;
+  padding:3px 9px;letter-spacing:.06em;transition:all .16s;
+}
+.mini:hover{color:var(--bone);border-color:rgba(232,214,182,.3)}
+.mini[aria-pressed="true"]{color:var(--brass);border-color:rgba(211,162,78,.45)}
+
+.voicings{
+  display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:9px;
+  align-items:stretch;
+}
+.vcard{
+  position:relative;border:1px solid var(--line);border-radius:2px;
+  background:linear-gradient(180deg,rgba(29,22,20,.75),rgba(20,15,14,.6));
+  padding:9px 9px 10px;text-align:left;display:flex;flex-direction:column;gap:2px;
+  transition:border-color .16s,background .16s,transform .16s;
+}
+.vcard:hover{border-color:rgba(232,214,182,.3);background:rgba(232,214,182,.04)}
+.vcard[aria-pressed="true"]{
+  border-color:var(--brass);
+  background:linear-gradient(180deg,rgba(211,162,78,.11),rgba(211,162,78,.03));
+}
+.vcard[aria-pressed="true"]::before{
+  content:'';position:absolute;left:-1px;top:-1px;width:10px;height:1px;background:var(--brass);
+}
+.vcard .vtop{display:flex;align-items:baseline;justify-content:space-between;gap:4px}
+.vcard .vnum{font-family:var(--serif);font-size:11px;color:var(--mute);letter-spacing:.08em}
+.vcard .vpos{font-size:10px;color:var(--dim);letter-spacing:.04em;white-space:nowrap}
+.vcard[aria-pressed="true"] .vpos{color:var(--brass)}
+.vcard .vfoot{
+  display:flex;justify-content:space-between;gap:4px;
+  font-size:9.5px;color:var(--mute);letter-spacing:.04em;margin-top:2px;
+}
+.vcard svg{width:100%;height:auto;display:block;margin:2px 0 3px}
+.empty{
+  border:1px dashed var(--line);padding:34px 20px;text-align:center;color:var(--mute);
+  font-size:13px;grid-column:1/-1;border-radius:2px;
+}
+
+/* ========== 详解 ========== */
+.detail{
+  margin-top:34px;border:1px solid var(--line);border-radius:3px;
+  background:linear-gradient(150deg,rgba(28,21,19,.92),rgba(18,13,12,.92));
+  padding:20px;
+}
+.dhead{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:16px}
+.dhead .t{font-size:11.5px;letter-spacing:.18em;color:var(--mute)}
+.dhead .pos{font-size:13px;color:var(--bone-2)}
+.dhead .pos b{font-family:var(--serif);font-size:16px;color:var(--bone);font-weight:500}
+.dhead .spacer{flex:1}
+.player{display:flex;gap:7px}
+.play{
+  border:1px solid rgba(211,162,78,.5);color:var(--brass);
+  padding:6px 15px 7px;border-radius:2px;font-size:12px;letter-spacing:.08em;
+  background:rgba(211,162,78,.06);transition:all .16s;white-space:nowrap;
+}
+.play:hover{background:rgba(211,162,78,.14);border-color:var(--brass)}
+.play:active{transform:translateY(1px)}
+.play.ghost{border-color:var(--line);color:var(--dim);background:none}
+.play.ghost:hover{color:var(--bone);border-color:rgba(232,214,182,.3);background:rgba(232,214,182,.04)}
+.dbody{display:grid;grid-template-columns:320px 1fr;gap:26px;align-items:start}
+.bigwrap{display:flex;justify-content:center}
+.bigwrap svg{width:100%;max-width:300px;height:auto}
+.ftable{width:100%;border-collapse:collapse;font-size:12.5px}
+.ftable th{
+  font-weight:400;font-size:10px;letter-spacing:.14em;color:var(--mute);
+  text-align:left;padding:0 10px 8px;border-bottom:1px solid var(--line);
+}
+.ftable td{padding:7px 10px;border-bottom:1px solid var(--line-soft);color:var(--bone-2)}
+.ftable tr.muted td{color:var(--mute)}
+.ftable .sh{font-family:var(--serif);font-size:14px;color:var(--bone)}
+.ftable .fing{
+  font-family:var(--serif);font-size:14px;color:var(--brass);text-align:center;
+}
+.ftable .nm{font-family:var(--serif);font-size:15px;color:var(--bone)}
+.ftable .dg{color:var(--dim)}
+.notes-box{margin-top:14px;border-top:1px solid var(--line);padding-top:12px}
+.notes-box .nt{font-size:10.5px;letter-spacing:.14em;color:var(--mute);margin-bottom:6px}
+.notes-box p{margin:0;font-size:12.5px;color:var(--bone-2);line-height:1.75}
+.legend{display:flex;gap:14px;flex-wrap:wrap;margin-top:14px;font-size:10.5px;color:var(--mute)}
+.legend i{display:inline-flex;align-items:center;gap:5px;font-style:normal}
+.legend .dot{width:8px;height:8px;border-radius:50%;display:inline-block}
+.legend .dot.brass{background:var(--brass)}
+.legend .dot.bone{background:var(--bone)}
+.legend .dot.teal{background:var(--teal)}
+
+/* ========== 指板图 ========== */
+.neck{margin-top:34px}
+.neckwrap{
+  border:1px solid var(--line);border-radius:3px;overflow-x:auto;overflow-y:hidden;
+  background:linear-gradient(180deg,rgba(24,18,17,.9),rgba(16,12,11,.9));
+  padding:16px 14px 10px;
+  -webkit-overflow-scrolling:touch;
+}
+.neckwrap svg{display:block;min-width:660px;width:100%;height:auto}
+.nlegend{display:flex;gap:16px;flex-wrap:wrap;margin-top:12px;font-size:10.5px;color:var(--mute)}
+.scroll-tip{display:none;margin-top:7px;font-size:10.5px;letter-spacing:.06em;color:var(--mute)}
+
+/* ========== 音阶区 ========== */
+.scale-sum{display:flex;align-items:flex-end;gap:22px;margin-top:30px;flex-wrap:wrap}
+.scale-sym{display:flex;align-items:baseline;gap:11px;line-height:1;margin-bottom:8px}
+.scroot{font-family:var(--serif);font-size:48px;color:var(--bone);letter-spacing:.01em}
+.scname{font-size:24px;letter-spacing:.08em;color:var(--bone-2)}
+.scale-list{display:flex;gap:5px;flex-wrap:wrap;margin-top:6px}
+.dia{margin-top:22px}
+.dia .dl{font-size:10.5px;letter-spacing:.14em;color:var(--mute);margin-bottom:8px}
+.dia .chips{display:flex;gap:6px;flex-wrap:wrap}
+.dchip{
+  border:1px solid var(--line);border-radius:2px;padding:7px 12px;
+  font-family:var(--serif);font-size:16px;color:var(--bone-2);transition:all .16s;
+}
+.dchip:hover{border-color:var(--brass);color:var(--brass);background:rgba(211,162,78,.07)}
+.dchip span{font-family:var(--sans);font-size:9.5px;color:var(--mute);margin-left:5px}
+
+/* ========== 页脚 ========== */
+.foot{
+  margin-top:44px;padding-top:18px;border-top:1px solid var(--line-soft);
+  display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap;
+  font-size:10.5px;color:var(--mute);letter-spacing:.05em;line-height:1.9;
+}
+.foot b{color:var(--dim);font-weight:400}
+
+/* ========== 响应式 ========== */
+@media (max-width:1080px){
+  .page{padding:0 20px 60px}
+  .voicings{grid-template-columns:repeat(4,minmax(0,1fr))}
+  .dbody{grid-template-columns:270px 1fr;gap:18px}
+  .top{gap:16px}
+  .opts{gap:10px}
+}
+@media (max-width:820px){
+  .scroll-tip{display:block}
+  .top{flex-wrap:wrap;row-gap:10px;padding:12px 0}
+  .opts{margin-left:0;width:100%;justify-content:flex-start}
+  .sym{font-size:56px}
+  .sumbar{margin-left:0;width:100%;gap:20px}
+  .voicings{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .dbody{grid-template-columns:1fr}
+  .bigwrap{justify-content:flex-start}
+  .bigwrap svg{max-width:260px}
+}
+@media (max-width:600px){
+  .page{padding:0 14px 48px}
+  .brand h1{font-size:20px}
+  .tabs{gap:0}
+  .tab{padding:9px 11px 10px;font-size:12.5px}
+  .crow{flex-direction:column;gap:8px}
+  .clabel{padding-top:0;flex:none}
+  .console{padding:14px;margin-top:16px}
+  .roots{grid-template-columns:repeat(6,minmax(0,1fr));gap:4px}
+  .root{height:46px;font-size:16.5px}
+  .qual{padding:7px 9px;min-height:50px;font-size:11.5px}
+  .quals{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:5px}
+  .sym{font-size:46px}
+  .scroot{font-size:38px}
+  .scname{font-size:19px}
+  .summary{gap:14px;margin-top:20px}
+  .scale-sum{gap:14px;margin-top:20px}
+  .sumbar{flex-wrap:nowrap;gap:18px;align-items:center}
+  .sumbar .stat b{font-size:20px}
+  .symblock{flex-direction:column;align-items:flex-start;gap:2px;width:100%}
+  .symmeta{padding-bottom:0;margin-top:2px}
+  .qlabel{margin-bottom:4px}
+  .tones{font-size:17px;gap:7px}
+  .voicings{grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
+  .detail{padding:14px;margin-top:24px}
+  .dhead{gap:8px}
+  .player{width:100%;justify-content:flex-start}
+  .ftable{font-size:12px}
+  .ftable td,.ftable th{padding-left:6px;padding-right:6px}
+  .sec-head{margin:26px 0 10px}
+  .ftable th:nth-child(5),.ftable td:nth-child(5){display:none}
+  .lever{height:36px;padding:0 11px;font-size:11.5px}
+  .acc button{width:36px;height:36px}
+  .opt select{height:36px}
+  .mini{min-height:36px}
+  .ply{min-height:40px}
+}
+@media (prefers-reduced-motion:reduce){
+  *{transition:none!important;animation:none!important}
+}
+</style>
+</head>
+<body>
+<div class="page">
+  <header class="top">
+    <div class="brand">
+      <svg class="mark" viewBox="0 0 32 32" aria-hidden="true">
+        <circle cx="16" cy="16" r="14" fill="none" stroke="#8C672C" stroke-width="1"/>
+        <circle cx="16" cy="16" r="11" fill="none" stroke="#D3A24E" stroke-width=".9"/>
+        <circle cx="16" cy="16" r="7.4" fill="none" stroke="#D3A24E" stroke-width=".7" opacity=".8"/>
+        <circle cx="16" cy="16" r="3" fill="#D3A24E" opacity=".9"/>
+        <g stroke="#D3A24E" stroke-width=".7" opacity=".55">
+          <line x1="16" y1="2" x2="16" y2="6"/><line x1="16" y1="26" x2="16" y2="30"/>
+          <line x1="2" y1="16" x2="6" y2="16"/><line x1="26" y1="16" x2="30" y2="16"/>
+        </g>
+      </svg>
+      <div>
+        <h1>指法</h1>
+        <span class="sub">GUITAR FINGERING</span>
+      </div>
+    </div>
+    <nav class="tabs" role="tablist" aria-label="模式">
+      <button class="tab" data-mode="chord" role="tab" aria-selected="true">和弦指法</button>
+      <button class="tab" data-mode="scale" role="tab" aria-selected="false">音阶指板</button>
+    </nav>
+    <div class="opts">
+      <label class="opt">调弦
+        <select id="tuning" aria-label="调弦方式"></select>
+      </label>
+      <label class="opt">变调夹
+        <select id="capo" aria-label="变调夹位置"></select>
+      </label>
+      <button class="lever" id="lefty" aria-pressed="false">左手持琴</button>
+      <div class="acc" role="group" aria-label="记谱方式">
+        <button data-acc="sharp" aria-pressed="true" title="按升号记谱">♯</button>
+        <button data-acc="flat" aria-pressed="false" title="按降号记谱">♭</button>
+      </div>
+    </div>
+  </header>
+
+  <section class="console" aria-label="和弦选择">
+    <div class="crow">
+      <span class="clabel">根音</span>
+      <div class="cbody"><div class="roots" id="roots"></div></div>
+    </div>
+    <div class="crow">
+      <span class="clabel" id="typeLabel">和弦类型</span>
+      <div class="cbody"><div class="quals" id="quals"></div></div>
+    </div>
+  </section>
+
+  <!-- ===== 视图：和弦 ===== -->
+  <div id="chordView">
+    <div class="summary">
+      <div class="symblock">
+        <div class="symwrap"><span class="sym" id="sym"></span></div>
+        <div class="symmeta">
+          <div class="qlabel" id="qlabel"></div>
+          <div class="tones" id="tones"></div>
+          <div class="degrees" id="degrees"></div>
+        </div>
+      </div>
+      <div class="sumbar">
+        <div class="stat"><b id="statCount">–</b><span>可用按法</span></div>
+        <div class="stat"><b id="statPos">–</b><span>最高把位</span></div>
+      </div>
+    </div>
+
+    <div class="sec-head">
+      <h2>按 法 选 择</h2>
+      <span class="hint">点选任一按法查看详解</span>
+    </div>
+    <div class="voicings" id="voicings"></div>
+
+    <section class="detail" aria-label="按法详解">
+      <div class="dhead">
+        <span class="t">按 法 详 解</span>
+        <span class="pos" id="detailPos"></span>
+        <div class="spacer"></div>
+        <div class="player">
+          <button class="play" id="playStrum">扫弦试听</button>
+          <button class="play ghost" id="playArp">分解试听</button>
+        </div>
+      </div>
+      <div class="dbody">
+        <div class="bigwrap" id="bigDiagram"></div>
+        <div>
+          <table class="ftable">
+            <colgroup><col style="width:20%"><col style="width:16%"><col style="width:14%"><col style="width:26%"><col style="width:24%"></colgroup>
+            <thead><tr><th>弦</th><th>品</th><th>指</th><th>音名</th><th>级数</th></tr></thead>
+            <tbody id="ftable"></tbody>
+          </table>
+          <div class="notes-box">
+            <div class="nt">按 法 说 明</div>
+            <p id="detailNote"></p>
+            <div class="legend">
+              <i><span class="dot brass"></span>根音</i>
+              <i><span class="dot bone"></span>和弦音</i>
+              <i><span class="dot teal"></span>引导音 3 / 7</i>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="neck" aria-label="全指板音位">
+      <div class="sec-head">
+        <h2>全 指 板 音 位</h2>
+        <span class="hint">十五品内和弦音分布</span>
+        <div class="side">
+          <button class="mini" id="neckModeChord" aria-pressed="false">显示级数</button>
+        </div>
+      </div>
+      <div class="neckwrap"><div id="neckChord"></div></div>
+      <div class="scroll-tip">左右滑动查看全部品位</div>
+      <div class="nlegend">
+        <span class="dot brass" style="width:8px;height:8px;border-radius:50%;display:inline-block"></span> 根音
+        <span class="dot teal" style="width:8px;height:8px;border-radius:50%;display:inline-block;margin-left:14px"></span> 引导音 3 / 7
+      </div>
+    </section>
+  </div>
+
+  <!-- ===== 视图：音阶 ===== -->
+  <div id="scaleView" hidden>
+    <div class="scale-sum">
+      <div>
+        <div class="scale-sym" id="scSym"></div>
+        <div class="qlabel" id="scMeta"></div>
+      </div>
+      <div class="symmeta" style="padding-bottom:6px">
+        <div class="tones" id="scTones"></div>
+        <div class="degrees" id="scDegrees"></div>
+      </div>
+      <div class="sumbar">
+        <div class="stat"><b id="scCount">–</b><span>音级数量</span></div>
+        <div class="player" style="align-items:flex-end">
+          <button class="play" id="playScaleUp">上行试听</button>
+          <button class="play ghost" id="playScaleDown">下行试听</button>
+        </div>
+      </div>
+    </div>
+
+    <section class="neck" aria-label="音阶指板">
+      <div class="sec-head">
+        <h2>音 阶 指 板</h2>
+        <span class="hint">十五品内音阶音分布</span>
+        <div class="side">
+          <button class="mini" id="neckModeScale" aria-pressed="false">显示级数</button>
+        </div>
+      </div>
+      <div class="neckwrap"><div id="neckScale"></div></div>
+      <div class="scroll-tip">左右滑动查看全部品位</div>
+      <div class="nlegend">
+        <span style="display:inline-flex;align-items:center;gap:5px"><span style="width:8px;height:8px;border-radius:50%;background:#D3A24E;display:inline-block"></span>主音</span>
+        <span style="display:inline-flex;align-items:center;gap:5px;margin-left:14px"><span style="width:8px;height:8px;border-radius:50%;background:#6F9A8C;display:inline-block"></span>三度 / 七度</span>
+        <span style="display:inline-flex;align-items:center;gap:5px;margin-left:14px"><span style="width:8px;height:8px;border-radius:50%;background:#C3B197;display:inline-block"></span>其他音级</span>
+      </div>
+    </section>
+
+    <div class="dia" id="diaBox">
+      <div class="dl">顺 阶 和 弦</div>
+      <div class="chips" id="diaChips"></div>
+    </div>
+  </div>
+
+  <footer class="foot">
+    <div>
+      <b>说明</b> · 指法由和弦音自动推算，列出各把位的常用按法；实际演奏可按手型微调。<br>
+      变调夹指法按“实际音高”计算，图中横条为变调夹位置，夹位以下的音不再使用。
+    </div>
+    <div style="text-align:right">
+      <b>调弦</b> · 标准 / Drop D / 降半音 / Open G / DADGAD<br>
+      和弦图从六弦（左）到一弦（右），数字为左手手指。
+    </div>
+  </footer>
+</div>
+<script>
+/* ========== 数据 ========== */
+const LETTERS = ['C','D','E','F','G','A','B'];
+const NATURAL = [0,2,4,5,7,9,11];
+const ACC_REP = {'0':'','1':'♯','2':'♯♯','3':'♯♯♯','-1':'♭','-2':'♭♭','-3':'♭♭♭'};
+
+/* 音名 → 字母序号 + 升降记号 */
+const NOTE_PARTS = [
+  {sharp:[0,0],  flat:[0,0]},   // C
+  {sharp:[0,1],  flat:[1,-1]},  // C# / Db
+  {sharp:[1,0],  flat:[1,0]},   // D
+  {sharp:[1,1],  flat:[2,-1]},  // D# / Eb
+  {sharp:[2,0],  flat:[2,0]},   // E
+  {sharp:[3,0],  flat:[3,0]},   // F
+  {sharp:[3,1],  flat:[4,-1]},  // F# / Gb
+  {sharp:[4,0],  flat:[4,0]},   // G
+  {sharp:[4,1],  flat:[5,-1]},  // G# / Ab
+  {sharp:[5,0],  flat:[5,0]},   // A
+  {sharp:[5,1],  flat:[6,-1]},  // A# / Bb
+  {sharp:[6,0],  flat:[6,0]},   // B
+];
+
+const ROOTS = [
+  {pc:0,  a:'C',  b:''},
+  {pc:1,  a:'C♯', b:'D♭', pref:'sharp'},
+  {pc:2,  a:'D',  b:''},
+  {pc:3,  a:'E♭', b:'D♯', pref:'flat'},
+  {pc:4,  a:'E',  b:''},
+  {pc:5,  a:'F',  b:''},
+  {pc:6,  a:'F♯', b:'G♭', pref:'sharp'},
+  {pc:7,  a:'G',  b:''},
+  {pc:8,  a:'A♭', b:'G♯', pref:'flat'},
+  {pc:9,  a:'A',  b:''},
+  {pc:10, a:'B♭', b:'A♯', pref:'flat'},
+  {pc:11, a:'B',  b:''},
+];
+
+/* 音级序号：和弦音程 → 记谱级数 */
+const DEG_OF_IV = {0:1,1:2,2:2,3:3,4:3,5:4,6:5,7:5,8:6,9:6,10:7,11:7};
+
+const TUNINGS = {
+  std:    {name:'标准 E A D G B E', midi:[40,45,50,55,59,64]},
+  dropd:  {name:'Drop D · D A D G B E', midi:[38,45,50,55,59,64]},
+  eflat:  {name:'降半音 · E♭ A♭ D♭ G♭ B♭ E♭', midi:[39,44,49,54,58,63]},
+  openg:  {name:'Open G · D G D G B D', midi:[38,43,50,55,59,62]},
+  dadgad: {name:'DADGAD · D A D G A D', midi:[38,45,50,55,57,62]},
+};
+const STRING_LABEL = ['6 弦','5 弦','4 弦','3 弦','2 弦','1 弦'];
+
+const QUALITIES = [
+  {id:'maj',   cn:'大三和弦', short:'大三', sym:'',      iv:[0,4,7],      ess:[0,4,7],     g:'三和弦'},
+  {id:'min',   cn:'小三和弦', short:'小三', sym:'m',     iv:[0,3,7],      ess:[0,3,7],     g:'三和弦'},
+  {id:'5',     cn:'强力和弦', short:'五度', sym:'5',     iv:[0,7],        ess:[0,7],       g:'三和弦'},
+  {id:'sus2',  cn:'挂二和弦', short:'挂二', sym:'sus2',  iv:[0,2,7],      ess:[0,2,7],     g:'三和弦'},
+  {id:'sus4',  cn:'挂四和弦', short:'挂四', sym:'sus4',  iv:[0,5,7],      ess:[0,5,7],     g:'三和弦'},
+  {id:'dim',   cn:'减三和弦', short:'减三', sym:'dim',   iv:[0,3,6],      ess:[0,3,6],     g:'三和弦'},
+  {id:'aug',   cn:'增三和弦', short:'增三', sym:'aug',   iv:[0,4,8],      ess:[0,4,8],     g:'三和弦'},
+  {id:'6',     cn:'六和弦',   short:'六',   sym:'6',     iv:[0,4,7,9],    ess:[0,4,9],     g:'三和弦'},
+  {id:'m6',    cn:'小六和弦', short:'小六', sym:'m6',    iv:[0,3,7,9],    ess:[0,3,9],     g:'三和弦'},
+  {id:'7',     cn:'属七和弦', short:'属七', sym:'7',     iv:[0,4,7,10],   ess:[0,4,10],    g:'七和弦'},
+  {id:'maj7',  cn:'大七和弦', short:'大七', sym:'maj7',  iv:[0,4,7,11],   ess:[0,4,11],    g:'七和弦'},
+  {id:'m7',    cn:'小七和弦', short:'小七', sym:'m7',    iv:[0,3,7,10],   ess:[0,3,10],    g:'七和弦'},
+  {id:'m7b5',  cn:'半减七和弦', short:'半减七', sym:'m7♭5', iv:[0,3,6,10], ess:[0,3,6,10], g:'七和弦'},
+  {id:'dim7',  cn:'减七和弦', short:'减七', sym:'dim7',  iv:[0,3,6,9],    ess:[0,3,6,9],   g:'七和弦'},
+  {id:'7sus4', cn:'七挂四',   short:'七挂四', sym:'7sus4', iv:[0,5,7,10], ess:[0,5,10],    g:'七和弦'},
+  {id:'add9',  cn:'加九和弦', short:'加九', sym:'add9',  iv:[0,2,4,7],    ess:[0,2,4],     g:'扩展'},
+  {id:'9',     cn:'属九和弦', short:'属九', sym:'9',     iv:[0,2,4,7,10], ess:[0,2,4,10],  g:'扩展'},
+  {id:'maj9',  cn:'大九和弦', short:'大九', sym:'maj9',  iv:[0,2,4,7,11], ess:[0,2,4,11],  g:'扩展'},
+  {id:'m9',    cn:'小九和弦', short:'小九', sym:'m9',    iv:[0,2,3,7,10], ess:[0,2,3,10],  g:'扩展'},
+];
+
+const SCALES = [
+  {id:'major',   cn:'大调音阶',   short:'大调',   iv:[0,2,4,5,7,9,11], dl:['1','2','3','4','5','6','7'], triads:['maj','min','min','maj','maj','min','dim']},
+  {id:'minor',   cn:'自然小调',   short:'自然小调', iv:[0,2,3,5,7,8,10], dl:['1','2','♭3','4','5','♭6','♭7'], triads:['min','dim','maj','min','min','maj','maj']},
+  {id:'majpent', cn:'大调五声',   short:'大五声', iv:[0,2,4,7,9],      dl:['1','2','3','5','6'], triads:[]},
+  {id:'minpent', cn:'小调五声',   short:'小五声', iv:[0,3,5,7,10],     dl:['1','♭3','4','5','♭7'], triads:[]},
+  {id:'blues',   cn:'布鲁斯音阶', short:'布鲁斯', iv:[0,3,5,6,7,10],   dl:['1','♭3','4','♭5','5','♭7'], triads:[]},
+  {id:'dorian',  cn:'多利亚调式', short:'多利亚', iv:[0,2,3,5,7,9,10], dl:['1','2','♭3','4','5','6','♭7'], triads:[]},
+  {id:'mixo',    cn:'混合利底亚', short:'混合利底亚', iv:[0,2,4,5,7,9,10], dl:['1','2','3','4','5','6','♭7'], triads:[]},
+  {id:'harm',    cn:'和声小调',   short:'和声小调', iv:[0,2,3,5,7,8,11], dl:['1','2','♭3','4','5','♭6','7'], triads:[]},
+];
+
+/* ========== 音名拼写 ========== */
+function isSharpSpelling(pc, acc){
+  if (acc === 'sharp') return true;
+  if (acc === 'flat') return false;
+  const r = ROOTS.find(x => x.pc === pc);
+  return r && r.pref ? r.pref === 'sharp' : true;
+}
+function noteParts(pc, useSharp){
+  const p = NOTE_PARTS[(pc % 12 + 12) % 12];
+  return useSharp ? p.sharp : p.flat;
+}
+function noteName(pc, useSharp){
+  const [letter, acc] = noteParts(pc, useSharp);
+  return LETTERS[letter] + (ACC_REP[acc] || '');
+}
+/* 按音程正确拼写：C♯ 大三 → C♯ E♯ G♯ */
+function spellInterval(rootPc, useSharp, iv){
+  const [rl, racc] = noteParts(rootPc, useSharp);
+  const deg = DEG_OF_IV[iv % 12] || 1;
+  const li = (rl + deg - 1) % 7;
+  const target = (rootPc + iv) % 12;
+  let diff = (target - NATURAL[li] + 12) % 12;
+  if (diff > 6) diff -= 12;
+  if (Math.abs(diff) > 2) return noteName(target, useSharp);
+  return LETTERS[li] + (ACC_REP[diff] || '');
+}
+function intervalText(iv){
+  return ({0:'1',1:'♭2',2:'2',3:'♭3',4:'3',5:'4',6:'♭5',7:'5',8:'♯5',9:'6',10:'♭7',11:'7'})[iv % 12] || String(iv);
+}
+
+/* ========== 指法推算 ========== */
+function analyzeFingers(notes, openFret){
+  const fretted = notes.filter(n => n.f > openFret);
+  if (!fretted.length) return {fingers:[], count:0, barre:null};
+  const minF = Math.min(...fretted.map(n => n.f));
+  const byF = new Map();
+  for (const n of fretted){
+    if (!byF.has(n.f)) byF.set(n.f, []);
+    byF.get(n.f).push(n.s);
+  }
+  for (const [, ss] of byF) ss.sort((a,b) => a-b);
+
+  const atMin = byF.get(minF) || [];
+  let barre = null;
+  if (atMin.length >= 2){
+    const s1 = atMin[0], s2 = atMin[atMin.length - 1];
+    const run = notes.filter(n => n.s >= s1 && n.s <= s2);
+    const noGap = run.length === (s2 - s1 + 1);
+    const hasHigher = run.some(n => n.f > minF);
+    const allAbove = run.every(n => n.f >= minF);
+    if (noGap && allAbove && (hasHigher ? (s2 - s1 + 1) >= 3 : (s2 - s1 + 1) >= 4)){
+      barre = {f:minF, s1, s2};
+    }
+  }
+  const fingerOf = new Map();
+  let finger = 1, count = 0;
+  if (barre){
+    for (let s = barre.s1; s <= barre.s2; s++) fingerOf.set(s + ':' + minF, 1);
+    finger = 2; count = 1;
+  }
+  const frets = [...byF.keys()].sort((a,b) => a-b);
+  for (const f of frets){
+    if (barre && f === minF) continue;
+    const ss = byF.get(f).slice();
+    const groups = [];
+    let g = [ss[0]];
+    for (let i = 1; i < ss.length; i++){
+      if (ss[i] === ss[i-1] + 1) g.push(ss[i]);
+      else { groups.push(g); g = [ss[i]]; }
+    }
+    groups.push(g);
+    for (const grp of groups){
+      if (grp.length <= 2){
+        if (finger > 4) return null;
+        for (const s of grp) fingerOf.set(s + ':' + f, finger);
+        finger++; count++;
+      } else {
+        for (const s of grp){
+          if (finger > 4) return null;
+          fingerOf.set(s + ':' + f, finger);
+          finger++; count++;
+        }
+      }
+    }
+  }
+  if (count > 4 || count < 1) return null;
+  const fingers = [];
+  for (const n of notes){
+    if (n.f > openFret){
+      const fg = fingerOf.get(n.s + ':' + n.f);
+      if (!fg) return null;
+      fingers.push({s:n.s, f:n.f, finger:fg});
+    }
+  }
+  return {fingers, count, barre, minF};
+}
+
+function buildVoicings(rootPc, q, tuningKey, openFret){
+  const tuning = TUNINGS[tuningKey];
+  const set = new Set(q.iv.map(i => (rootPc + i) % 12));
+  const all = [];
+  const seen = new Set();
+
+  for (let base = openFret; base <= 12; base++){
+    const hi = base + 4;
+    const cand = [];
+    for (let s = 0; s < 6; s++){
+      const spc = tuning.midi[s] % 12;
+      const list = [];
+      if (base === openFret && set.has(spc)) list.push(openFret);
+      for (let f = Math.max(openFret + 1, base); f <= hi; f++){
+        if (set.has((spc + f) % 12)) list.push(f);
+      }
+      cand.push(list);
+    }
+    const cur = new Array(6).fill(null);
+    const evaluate = () => {
+      const notes = [];
+      for (let s = 0; s < 6; s++) if (cur[s] !== null) notes.push({s, f:cur[s]});
+      if (!notes.length) return;
+      if (notes.length < (q.iv.length <= 2 ? 2 : 3)) return;
+      if (notes[notes.length-1].s - notes[0].s + 1 !== notes.length) return; // 中间不许哑弦
+      const bassNote = notes[0];
+      const bassPc = (tuning.midi[bassNote.s] + bassNote.f) % 12;
+      if (bassPc !== rootPc) return;                                        // 低音必须是根音
+      const fretted = notes.filter(n => n.f > openFret);
+      if (!fretted.length) return;
+      const minF = Math.min(...fretted.map(n => n.f));
+      const maxF = Math.max(...fretted.map(n => n.f));
+      const span = maxF - minF;
+      if (span > 4 || maxF > 14) return;
+      if (q.iv.length <= 2 && (notes.length > 4 || span > 3)) return;
+
+      const fa = analyzeFingers(notes, openFret);
+      if (!fa) return;
+
+      const ivs = new Set(notes.map(n => ((tuning.midi[n.s] + n.f) % 12 - rootPc + 12) % 12));
+      for (const e of q.ess) if (!ivs.has(e)) return;
+
+      const key = cur.map(f => f === null ? 'x' : f).join(',');
+      if (seen.has(key)) return;
+      seen.add(key);
+
+      const openCount = notes.filter(n => n.f === openFret).length;
+      const midOpen = notes.filter(n => {
+        if (n.f !== openFret) return false;
+        return notes.some(m => m.s < n.s && m.f > openFret) && notes.some(m => m.s > n.s && m.f > openFret);
+      }).length;
+
+      let score = 0;
+      score -= notes.length * 1.7;
+      score -= openCount * 1.0;
+      score -= midOpen * 0.55;
+      score += minF * 0.55;
+      score += span > 2 ? (span - 2) * 2.0 : 0;
+      score += fa.count > 3 ? 1.5 : 0;
+      if (fa.barre) score -= 1.0;      // 横按形态通常是更标准的按法
+      if (q.iv.includes(7) && !ivs.has(7)) score += 2.2;   // 省略五音
+      score += Math.max(0, maxF - 8) * 0.9;
+
+      all.push({
+        frets: cur.slice(), notes, bass: bassNote.s, minF, maxF, span,
+        fa, key, score, openFret, tuningKey, rootPc, qid: q.id,
+      });
+    };
+    const rec = (s) => {
+      if (s === 6){ evaluate(); return; }
+      cur[s] = null; rec(s + 1);
+      for (const f of cand[s]){ cur[s] = f; rec(s + 1); }
+      cur[s] = null;
+    };
+    rec(0);
+  }
+  return all;
+}
+
+function pickVoicings(all, limit){
+  const groups = new Map();
+  for (const v of all){
+    const k = v.minF + '|' + v.bass + '|' + (v.fa.barre ? 'b' + v.fa.barre.f : '-');
+    if (!groups.has(k)) groups.set(k, []);
+    groups.get(k).push(v);
+  }
+  const chosen = [];
+  for (const [, list] of groups){
+    list.sort((a,b) => a.score - b.score);
+    chosen.push(list[0]);
+  }
+  chosen.sort((a,b) => a.score - b.score);
+  return chosen.slice(0, limit);
+}
+
+const vCache = new Map();
+function getVoicings(rootPc, q, tuningKey, openFret){
+  const key = rootPc + '|' + q.id + '|' + tuningKey + '|' + openFret;
+  if (vCache.has(key)) return vCache.get(key);
+  const picked = pickVoicings(buildVoicings(rootPc, q, tuningKey, openFret), 6);
+  vCache.set(key, picked);
+  return picked;
+}
+/* ========== 图块绘制 ========== */
+function chordSVG(v, opt){
+  const compact = !!opt.compact;
+  const W = compact ? 152 : 300;
+  const H = compact ? 196 : 392;
+  const padL = compact ? 24 : 40, padR = compact ? 12 : 24;
+  const padT = compact ? 30 : 54, padB = compact ? 16 : 30;
+  const gw = W - padL - padR, gh = H - padT - padB;
+  const open = v.openFret;
+  const hasFree = v.notes.some(n => n.f === open);
+  const firstFret = hasFree ? open + 1 : v.minF;
+  const maxF = Math.max(...v.notes.map(n => n.f));
+  const rows = Math.max(4, Math.min(5, maxF - firstFret + 1));
+  const fh = gh / rows;
+  const sx = s => padL + (state.lefty ? 5 - s : s) * (gw / 5);
+  const yOf = f => padT + (f - firstFret + 0.5) * fh;
+  const r = compact ? 7 : 12;
+  const useSharp = isSharpSpelling(v.rootPc, state.acc);
+  const tuning = TUNINGS[v.tuningKey];
+  let out = '';
+
+  for (let i = 0; i < 6; i++){
+    const w = 2.3 - i * 0.32;
+    out += `<line x1="${sx(i)}" y1="${padT}" x2="${sx(i)}" y2="${padT+gh}" stroke="rgba(233,221,197,.38)" stroke-width="${w.toFixed(2)}"/>`;
+  }
+  for (let i = 0; i <= rows; i++){
+    const y = padT + i * fh;
+    if (i === 0 && firstFret === 1){
+      out += `<rect x="${padL-1}" y="${y-1.7}" width="${gw+2}" height="${compact?3.6:5}" fill="#D8C6A4" opacity=".9"/>`;
+    } else {
+      out += `<line x1="${padL}" y1="${y}" x2="${padL+gw}" y2="${y}" stroke="rgba(233,221,197,.27)" stroke-width="1"/>`;
+    }
+  }
+  if (open > 0 && firstFret === open + 1){
+    out += `<rect x="${padL-1}" y="${padT-2.2}" width="${gw+2}" height="4.4" fill="#B98A3B" opacity=".85"/>`;
+    if (!compact) out += `<text x="${padL+gw}" y="${padT-13}" text-anchor="end" font-size="10" letter-spacing="1" fill="#D3A24E">变调夹 ${open} 品</text>`;
+  }
+  const numX = state.lefty ? padL + gw + 7 : padL - 7;
+  const anchor = state.lefty ? 'start' : 'end';
+  for (let i = 0; i < rows; i++){
+    out += `<text x="${numX}" y="${padT+(i+0.5)*fh+(compact?3:3.8)}" text-anchor="${anchor}" font-size="${compact?7.4:10}" fill="${compact?'#A08E76':'#9A8871'}">${firstFret+i}</text>`;
+  }
+  for (let i = 0; i < 6; i++){
+    const note = v.notes.find(x => x.s === i);
+    if (!note){
+      out += `<text x="${sx(i)}" y="${padT-(compact?8:13)}" text-anchor="middle" font-size="${compact?9:13}" fill="#8A7761">×</text>`;
+    } else if (note.f === open){
+      if (open === 0){
+        out += `<circle cx="${sx(i)}" cy="${padT-(compact?10:15)}" r="${compact?2.4:3.8}" fill="none" stroke="rgba(233,221,197,.62)" stroke-width="1.2"/>`;
+      } else {
+        out += `<circle cx="${sx(i)}" cy="${padT-(compact?10:15)}" r="${compact?2.2:3.4}" fill="#B98A3B" opacity=".9"/>`;
+      }
+    }
+  }
+  const groups = new Map();
+  v.fa.fingers.forEach(fg => {
+    if (!groups.has(fg.finger)) groups.set(fg.finger, []);
+    groups.get(fg.finger).push(fg);
+  });
+  groups.forEach(list => {
+    const f = list[0].f;
+    const xs = list.map(x => sx(x.s)).sort((a,b) => a-b);
+    const isRoot = list.some(x => ((tuning.midi[x.s] + x.f) % 12) === v.rootPc);
+    const fill = isRoot ? '#D3A24E' : '#E4D7BE';
+    const txt = isRoot ? '#1A1209' : '#17110F';
+    if (list.length >= 2){
+      const x1 = Math.max(padL - 2, xs[0] - r * 0.92);
+      const x2 = Math.min(padL + gw + 2, xs[xs.length-1] + r * 0.92);
+      const y = yOf(f) - r * 0.72;
+      out += `<rect x="${x1.toFixed(1)}" y="${y.toFixed(1)}" width="${(x2-x1).toFixed(1)}" height="${(r*1.44).toFixed(1)}" rx="${(r*0.7).toFixed(1)}" fill="${fill}"/>`;
+      out += `<text x="${((x1+x2)/2).toFixed(1)}" y="${(yOf(f)+(compact?3:4)).toFixed(1)}" text-anchor="middle" font-size="${compact?7.5:12}" fill="${txt}">${list[0].finger}</text>`;
+    } else {
+      out += `<circle cx="${xs[0].toFixed(1)}" cy="${yOf(f).toFixed(1)}" r="${r}" fill="${fill}"/>`;
+      out += `<text x="${xs[0].toFixed(1)}" y="${(yOf(f)+(compact?3.2:4.2)).toFixed(1)}" text-anchor="middle" font-size="${compact?8:13}" fill="${txt}">${list[0].finger}</text>`;
+    }
+  });
+  if (!compact){
+    for (let i = 0; i < 6; i++){
+      const note = v.notes.find(x => x.s === i);
+      const nm = note ? noteName((tuning.midi[i] + note.f) % 12, useSharp) : '×';
+      out += `<text x="${sx(i)}" y="${padT+gh+14}" text-anchor="middle" font-size="9" fill="#9A8871">${nm}</text>`;
+    }
+  }
+  const desc = v.notes.map(n => `${6-n.s}弦${n.f===open?'空弦':n.f+'品'}`).join('，');
+  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${desc}">${out}</svg>`;
+}
+
+/* dots: Map pc -> {label, guide} */
+function neckSVG(dots, rootPc, opt){
+  const W = 800, H = 292;
+  const padL = 34, padT = 36, padB = 26, padR = 20;
+  const openW = 32;
+  const cellW = (W - padL - padR - openW) / 15;
+  const top = padT, bot = H - padB;
+  const rowH = (bot - top) / 6;
+  const xOpen = padL + openW / 2;
+  const xF = f => f === 0 ? xOpen : padL + openW + (f - 0.5) * cellW;
+  const yS = s => top + (s + 0.5) * rowH;
+  const midi = TUNINGS[state.tuning].midi;
+  const useSharp = isSharpSpelling(rootPc, state.acc);
+  let out = '';
+
+  out += `<rect x="${padL-1.5}" y="${top}" width="3.5" height="${bot-top}" fill="#D8C6A4" opacity=".85"/>`;
+  for (let f = 1; f <= 15; f++){
+    const x = padL + openW + (f - 1) * cellW;
+    out += `<line x1="${x}" y1="${top}" x2="${x}" y2="${bot}" stroke="rgba(233,221,197,.18)" stroke-width="1"/>`;
+  }
+  for (let s = 0; s < 6; s++){
+    out += `<line x1="${padL}" y1="${yS(s)}" x2="${W-padR}" y2="${yS(s)}" stroke="rgba(233,221,197,.34)" stroke-width="${(2.2 - s*0.3).toFixed(2)}"/>`;
+    out += `<text x="12" y="${yS(s)+4}" font-size="10" fill="#6C5C4C">${6-s}</text>`;
+  }
+  out += `<text x="${xOpen}" y="${padT-14}" text-anchor="middle" font-size="9" fill="#6C5C4C">空弦</text>`;
+  for (let f = 1; f <= 15; f++){
+    out += `<text x="${xF(f)}" y="${padT-14}" text-anchor="middle" font-size="9" fill="#6C5C4C">${f}</text>`;
+  }
+  if (state.capo > 0){
+    const x = padL + openW + (state.capo - 1) * cellW;
+    out += `<line x1="${x}" y1="${top-4}" x2="${x}" y2="${bot+4}" stroke="#B98A3B" stroke-width="2.5" opacity=".9"/>`;
+    out += `<text x="${padL+openW}" y="12" font-size="9.5" letter-spacing="1" fill="#D3A24E">变调夹 ${state.capo} 品</text>`;
+  }
+  for (let s = 0; s < 6; s++){
+    for (let f = 0; f <= 15; f++){
+      const pc = (midi[s] + f) % 12;
+      const d = dots.get(pc);
+      if (!d) continue;
+      const isRoot = pc === rootPc;
+      const fill = isRoot ? '#D3A24E' : (d.guide ? '#6F9A8C' : '#C3B197');
+      const txt = isRoot ? '#1A1209' : '#0F0C0A';
+      const dim = (state.capo > 0 && f < state.capo) ? ' opacity=".28"' : '';
+      const label = opt.byDegree ? d.label : noteName(pc, useSharp);
+      out += `<g${dim}><circle cx="${xF(f).toFixed(1)}" cy="${yS(s).toFixed(1)}" r="12.4" fill="${fill}"/>`;
+      out += `<text x="${xF(f).toFixed(1)}" y="${(yS(s)+3.6).toFixed(1)}" text-anchor="middle" font-size="${label.length>2?7.6:9.2}" fill="${txt}">${label}</text></g>`;
+    }
+  }
+  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${opt.byDegree?'音阶级数指板图':'音名指板图'}">${out}</svg>`;
+}
+
+/* ========== 渲染 ========== */
+const el = id => document.getElementById(id);
+
+function posLabel(v){
+  const start = v.notes.some(n => n.f === v.openFret) ? v.openFret : v.minF;
+  if (start === 0) return '开放把位';
+  if (v.openFret > 0 && start === v.openFret) return '变调夹 ' + v.openFret + ' 品';
+  return '第 ' + start + ' 品';
+}
+
+function renderConsole(){
+  el('roots').innerHTML = ROOTS.map((r,i) => `
+    <button class="root" data-pc="${i}" aria-pressed="${i === state.root}" title="${r.a}${r.b?' / '+r.b:''}">
+      <span>${r.a}</span>${r.b ? `<span class="alt">${r.b}</span>` : ''}
+    </button>`).join('');
+
+  const isChord = state.mode === 'chord';
+  el('typeLabel').textContent = isChord ? '和弦类型' : '音阶类型';
+  const useSharpNow = isSharpSpelling(ROOTS[state.root].pc, state.acc);
+  document.querySelectorAll('.acc button').forEach(b => {
+    b.setAttribute('aria-pressed', String(b.dataset.acc === (useSharpNow ? 'sharp' : 'flat')));
+  });
+  const list = isChord ? QUALITIES : SCALES;
+  const cur = isChord ? state.quality : state.scale;
+  el('quals').innerHTML = list.map(x => {
+    const sub = isChord ? (x.sym || 'maj') : (x.iv.length + ' 音');
+    return `<button class="qual" data-key="${x.id}" aria-pressed="${x.id === cur}">
+      <span>${x.short}</span><span class="qs">${sub}</span>
+    </button>`;
+  }).join('');
+}
+
+function renderChord(){
+  const q = QUALITIES.find(x => x.id === state.quality) || QUALITIES[0];
+  const rootPc = ROOTS[state.root].pc;
+  const useSharp = isSharpSpelling(rootPc, state.acc);
+  const voicings = getVoicings(rootPc, q, state.tuning, state.capo);
+  if (state.selected > voicings.length - 1) state.selected = 0;
+
+  el('sym').innerHTML = noteName(rootPc, useSharp) + (q.sym ? `<sub>${q.sym}</sub>` : '');
+  el('qlabel').textContent = q.cn;
+  el('tones').innerHTML = q.iv.map(iv => `<span>${spellInterval(rootPc, useSharp, iv)}</span>`).join('<span class="sep">·</span>');
+  el('degrees').innerHTML = q.iv.map(iv => {
+    const cls = iv === 0 ? 'root' : ((iv === 3 || iv === 4 || iv === 10 || iv === 11) ? 'guide' : '');
+    return `<span class="deg ${cls}">${intervalText(iv)}</span>`;
+  }).join('');
+  el('neckChord').innerHTML = neckSVG(chordDots(rootPc, q), rootPc, {byDegree: state.neckChord});
+  el('neckModeChord').textContent = state.neckChord ? '显示音名' : '显示级数';
+  el('neckModeChord').setAttribute('aria-pressed', state.neckChord ? 'true' : 'false');
+
+  el('statCount').textContent = voicings.length;
+  const topPos = voicings.length ? Math.max(...voicings.map(v => v.notes.some(n => n.f === v.openFret) ? v.openFret : v.minF)) : 0;
+  el('statPos').innerHTML = (topPos ? topPos : 0) + '<span style="font-size:11px;color:var(--mute);margin-left:2px">品</span>';
+
+  if (!voicings.length){
+    el('voicings').innerHTML = '<div class="empty">这个调弦与变调夹组合下没有可用的按法，试着降低变调夹位置。</div>';
+    el('bigDiagram').innerHTML = '';
+    el('ftable').innerHTML = '';
+    el('detailPos').textContent = '';
+    el('detailNote').textContent = '——';
+    return;
+  }
+
+  el('voicings').innerHTML = voicings.map((v,i) => `
+    <button class="vcard" data-i="${i}" aria-pressed="${i === state.selected}">
+      <div class="vtop"><span class="vnum">${String(i+1).padStart(2,'0')}</span><span class="vpos">${posLabel(v)}</span></div>
+      ${chordSVG(v,{compact:true})}
+      <div class="vfoot"><span>${v.fa.count} 指</span><span>跨 ${v.span} 品</span></div>
+    </button>`).join('');
+
+  const v = voicings[state.selected];
+  el('detailPos').innerHTML = `<b>${posLabel(v)}</b> · 低音 ${noteName(rootPc, useSharp)} · 跨 ${v.span} 品` +
+    (state.capo > 0 ? ` · 变调夹 ${state.capo} 品` : '');
+  el('bigDiagram').innerHTML = chordSVG(v, {compact:false});
+
+  const tuning = TUNINGS[state.tuning];
+  let rows = '';
+  for (let s = 0; s < 6; s++){
+    const n = v.notes.find(x => x.s === s);
+    const openNote = noteName(tuning.midi[s] % 12, useSharp);
+    if (!n){
+      rows += `<tr class="muted"><td class="sh">${6-s} 弦</td><td>—</td><td class="fing"></td><td>×</td><td class="dg">—</td></tr>`;
+      continue;
+    }
+    const iv = ((tuning.midi[s] + n.f) % 12 - rootPc + 12) % 12;
+    const finger = (v.fa.fingers.find(x => x.s === s) || {}).finger || '—';
+    const fretTxt = n.f === v.openFret ? (v.openFret === 0 ? '空弦' : '夹') : n.f + ' 品';
+    rows += `<tr>
+      <td class="sh">${6-s} 弦 <span class="dg">${openNote}</span></td>
+      <td>${fretTxt}</td>
+      <td class="fing">${finger}</td>
+      <td class="nm" style="${iv === 0 ? 'color:var(--brass)' : ''}">${spellInterval(rootPc, useSharp, iv)}</td>
+      <td class="dg">${intervalText(iv)}</td>
+    </tr>`;
+  }
+  el('ftable').innerHTML = rows;
+
+  const notes = [];
+  if (v.fa.barre){
+    const r1 = 6 - v.fa.barre.s2, r2 = 6 - v.fa.barre.s1;
+    notes.push(`第 ${v.fa.barre.f} 品横按 ${r1}–${r2} 弦`);
+  }
+  const openStr = v.notes.filter(n => n.f === v.openFret).map(n => 6 - n.s);
+  if (openStr.length){
+    notes.push((v.openFret === 0 ? '空弦' : '变调夹持弦') + '：' + openStr.join('、') + ' 弦');
+  }
+  const muteStr = [0,1,2,3,4,5].filter(s => !v.notes.some(n => n.s === s)).map(s => 6 - s);
+  if (muteStr.length) notes.push('不弹：' + muteStr.join('、') + ' 弦');
+  notes.push(`共 ${v.fa.count} 个手指，跨度 ${v.span} 品`);
+  if (v.notes[0].f !== 0 && v.notes[0].f !== v.openFret) notes.push(`低音：${6 - v.notes[0].s} 弦 ${v.notes[0].f} 品（根音）`);
+  el('detailNote').textContent = notes.join(' · ');
+
+}
+
+function chordDots(rootPc, q){
+  const m = new Map();
+  q.iv.forEach(iv => {
+    const pc = (rootPc + iv) % 12;
+    m.set(pc, {label: intervalText(iv), guide: (iv === 3 || iv === 4 || iv === 10 || iv === 11)});
+  });
+  return m;
+}
+
+function renderScale(){
+  const sc = SCALES.find(x => x.id === state.scale) || SCALES[0];
+  const rootPc = ROOTS[state.root].pc;
+  const useSharp = isSharpSpelling(rootPc, state.acc);
+
+  el('scSym').innerHTML = `<span class="scroot">${noteName(rootPc, useSharp)}</span><span class="scname">${sc.cn}</span>`;
+  el('scMeta').textContent = sc.iv.length + ' 个音级 · 主音 ' + noteName(rootPc, useSharp);
+  el('scTones').innerHTML = sc.iv.map(iv => `<span>${spellInterval(rootPc, useSharp, iv)}</span>`).join('<span class="sep">·</span>');
+  el('scDegrees').innerHTML = sc.dl.map((d,i) => {
+    const bare = String(d).replace('♭','');
+    const cls = i === 0 ? 'root' : ((bare === '3' || bare === '7') ? 'guide' : '');
+    return `<span class="deg ${cls}">${d}</span>`;
+  }).join('');
+  el('scCount').textContent = sc.iv.length;
+
+  const dots = new Map();
+  sc.iv.forEach((iv,i) => {
+    const pc = (rootPc + iv) % 12;
+    const bare = String(sc.dl[i]).replace('♭','');
+    dots.set(pc, {label: sc.dl[i], guide: (bare === '3' || bare === '7')});
+  });
+  el('neckScale').innerHTML = neckSVG(dots, rootPc, {byDegree: state.neckScale});
+  el('neckModeScale').textContent = state.neckScale ? '显示音名' : '显示级数';
+  el('neckModeScale').setAttribute('aria-pressed', state.neckScale ? 'true' : 'false');
+
+  if (sc.triads.length){
+    el('diaBox').style.display = '';
+    const romans = ['Ⅰ','Ⅱ','Ⅲ','Ⅳ','Ⅴ','Ⅵ','Ⅶ'];
+    el('diaChips').innerHTML = sc.triads.map((qid,i) => {
+      const q = QUALITIES.find(x => x.id === qid);
+      const pc = (rootPc + sc.iv[i]) % 12;
+      return `<button class="dchip" data-pc="${pc}" data-q="${qid}">${noteName(pc, useSharp)}${q.sym}<span>${romans[i]}</span></button>`;
+    }).join('');
+  } else {
+    el('diaBox').style.display = 'none';
+  }
+}
+
+function route(){
+  el('chordView').hidden = state.mode !== 'chord';
+  el('scaleView').hidden = state.mode !== 'scale';
+  renderConsole();
+  if (state.mode === 'chord') renderChord(); else renderScale();
+}
+/* ========== 声音 ========== */
+let AC = null, MASTER = null, WAVE = null;
+function ensureAudio(){
+  if (!AC){
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    if (!Ctx) return null;
+    AC = new Ctx();
+    MASTER = AC.createGain();
+    MASTER.gain.value = 0.92;
+    MASTER.connect(AC.destination);
+    const n = 18, real = new Float32Array(n), imag = new Float32Array(n);
+    for (let i = 1; i < n; i++){
+      imag[i] = (i % 2 ? 1 : 0.86) / Math.pow(i, 1.28);
+    }
+    WAVE = AC.createPeriodicWave(real, imag, {disableNormalization:false});
+  }
+  if (AC.state === 'suspended') AC.resume();
+  return AC;
+}
+function midiHz(m){ return 440 * Math.pow(2, (m - 69) / 12); }
+function pluck(midi, t, gain, dur){
+  const ac = ensureAudio();
+  if (!ac) return;
+  const osc = ac.createOscillator();
+  osc.setPeriodicWave(WAVE);
+  osc.frequency.value = midiHz(midi);
+  const g = ac.createGain();
+  const lp = ac.createBiquadFilter();
+  lp.type = 'lowpass';
+  lp.frequency.value = 3200;
+  lp.Q.value = 0.55;
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.linearRampToValueAtTime(gain, t + 0.008);
+  g.gain.exponentialRampToValueAtTime(gain * 0.0025, t + dur);
+  osc.connect(lp); lp.connect(g); g.connect(MASTER);
+  osc.start(t); osc.stop(t + dur + 0.06);
+}
+
+function currentVoicing(){
+  const q = QUALITIES.find(x => x.id === state.quality) || QUALITIES[0];
+  const rootPc = ROOTS[state.root].pc;
+  return getVoicings(rootPc, q, state.tuning, state.capo)[state.selected];
+}
+function playVoicing(kind){
+  const v = currentVoicing();
+  if (!v) return;
+  const ac = ensureAudio();
+  if (!ac) return;
+  const tuning = TUNINGS[state.tuning];
+  const midis = v.notes.map(n => tuning.midi[n.s] + n.f).sort((a,b) => a - b);
+  const t0 = ac.currentTime + 0.05;
+  const step = kind === 'arp' ? 0.12 : 0.019;
+  midis.forEach((m,i) => pluck(m, t0 + i * step, kind === 'arp' ? 0.17 : 0.125, kind === 'arp' ? 1.7 : 1.4));
+}
+function playScale(dir){
+  const sc = SCALES.find(x => x.id === state.scale) || SCALES[0];
+  const rootPc = ROOTS[state.root].pc;
+  const base = 48 + rootPc;
+  let seq = sc.iv.map(iv => base + iv);
+  seq.push(base + 12);
+  if (dir < 0) seq = seq.slice(0, -1).reverse();
+  const ac = ensureAudio();
+  if (!ac) return;
+  const t0 = ac.currentTime + 0.05;
+  seq.forEach((m,i) => pluck(m, t0 + i * 0.095, 0.16, 1.5));
+}
+
+/* ========== 初始状态 ========== */
+const state = {
+  mode:'chord',
+  root:0,
+  quality:'maj',
+  scale:'major',
+  tuning:'std',
+  capo:0,
+  lefty:false,
+  acc:'auto',
+  selected:0,
+  neckChord:false,
+  neckScale:false,
+};
+
+/* ========== 事件 ========== */
+function init(){
+  el('tuning').innerHTML = Object.entries(TUNINGS)
+    .map(([k,v]) => `<option value="${k}">${v.name}</option>`).join('');
+  el('capo').innerHTML = [0,1,2,3,4,5,6,7]
+    .map(n => `<option value="${n}">${n ? '第 ' + n + ' 品' : '不夹'}</option>`).join('');
+
+  el('roots').addEventListener('click', e => {
+    const btn = e.target.closest('.root');
+    if (!btn) return;
+    state.root = +btn.dataset.pc;
+    state.selected = 0;
+    route();
+  });
+
+  el('quals').addEventListener('click', e => {
+    const btn = e.target.closest('.qual');
+    if (!btn) return;
+    if (state.mode === 'chord') state.quality = btn.dataset.key;
+    else state.scale = btn.dataset.key;
+    state.selected = 0;
+    route();
+  });
+
+  document.querySelectorAll('.tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      state.mode = tab.dataset.mode;
+      document.querySelectorAll('.tab').forEach(t => t.setAttribute('aria-selected', String(t === tab)));
+      route();
+    });
+  });
+
+  el('tuning').addEventListener('change', e => {
+    state.tuning = e.target.value;
+    state.selected = 0;
+    route();
+  });
+  el('capo').addEventListener('change', e => {
+    state.capo = +e.target.value;
+    state.selected = 0;
+    route();
+  });
+  el('lefty').addEventListener('click', () => {
+    state.lefty = !state.lefty;
+    el('lefty').setAttribute('aria-pressed', String(state.lefty));
+    route();
+  });
+  document.querySelectorAll('.acc button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      state.acc = btn.dataset.acc;
+      document.querySelectorAll('.acc button').forEach(b => b.setAttribute('aria-pressed', String(b === btn)));
+      route();
+    });
+  });
+
+  el('voicings').addEventListener('click', e => {
+    const card = e.target.closest('.vcard');
+    if (!card) return;
+    state.selected = +card.dataset.i;
+    renderChord();
+  });
+
+  el('playStrum').addEventListener('click', () => playVoicing('strum'));
+  el('playArp').addEventListener('click', () => playVoicing('arp'));
+  el('playScaleUp').addEventListener('click', () => playScale(1));
+  el('playScaleDown').addEventListener('click', () => playScale(-1));
+
+  el('neckModeChord').addEventListener('click', () => {
+    state.neckChord = !state.neckChord;
+    renderChord();
+  });
+  el('neckModeScale').addEventListener('click', () => {
+    state.neckScale = !state.neckScale;
+    renderScale();
+  });
+
+  el('diaChips').addEventListener('click', e => {
+    const chip = e.target.closest('.dchip');
+    if (!chip) return;
+    const idx = ROOTS.findIndex(r => r.pc === +chip.dataset.pc);
+    if (idx < 0) return;
+    state.mode = 'chord';
+    state.root = idx;
+    state.quality = chip.dataset.q;
+    state.selected = 0;
+    document.querySelectorAll('.tab').forEach(t => t.setAttribute('aria-selected', String(t.dataset.mode === 'chord')));
+    route();
+  });
+
+  if (state.acc === 'auto'){
+    document.querySelectorAll('.acc button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.acc === 'sharp')));
+  }
+  el('tuning').value = state.tuning;
+  el('capo').value = state.capo;
+  route();
+}
+
+init();
+</script>
+</body>
+</html>
