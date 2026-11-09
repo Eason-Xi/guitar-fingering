@@ -331,6 +331,37 @@ a{color:inherit}
 .page.vert .neckwrap{max-width:340px;margin-left:auto;margin-right:auto}
 .page.vert .scroll-tip{display:none}
 
+/* ========== 记音训练 ========== */
+.mcards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px}
+.mcard{
+  text-align:left;border:1px solid var(--line);border-radius:2px;
+  background:rgba(24,18,17,.55);padding:12px 13px 14px;cursor:pointer;
+  transition:border-color .16s,background .16s;
+}
+.mcard:hover{border-color:rgba(232,214,182,.28)}
+.mcard[aria-pressed="true"]{border-color:rgba(211,162,78,.5);background:rgba(211,162,78,.06)}
+.mcard .mt{display:block;font-size:12.5px;letter-spacing:.04em;color:var(--bone);margin-bottom:7px}
+.mcard .mx{display:block;font-size:11px;line-height:1.8;color:var(--dim)}
+.tbar{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 12px}
+.tmode{
+  font-size:11.5px;letter-spacing:.05em;color:var(--dim);
+  border:1px solid var(--line);border-radius:2px;padding:5px 11px;transition:all .16s;
+}
+.tmode:hover{color:var(--bone-2);border-color:rgba(232,214,182,.28)}
+.tmode[aria-pressed="true"]{color:var(--brass);border-color:rgba(211,162,78,.45);background:rgba(211,162,78,.08)}
+.tprompt{font-size:14.5px;line-height:1.6;letter-spacing:.03em;color:var(--bone-2);margin-bottom:11px;min-height:24px}
+.tprompt b{font-family:var(--serif);font-size:17px;font-weight:500;color:var(--brass);padding:0 3px}
+.tprompt.ok{color:#6F9A8C}
+.tprompt.no{color:#B4593F}
+.tkeys{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:6px;margin-top:14px;max-width:780px}
+.tkeys[hidden]{display:none}
+.tkey{
+  font-family:var(--serif);font-size:17px;color:var(--bone-2);
+  border:1px solid var(--line);border-radius:2px;padding:9px 0;transition:all .14s;
+}
+.tkey:hover{color:var(--bone);border-color:rgba(232,214,182,.32);background:rgba(232,214,182,.04)}
+.tkey:active{transform:translateY(1px)}
+
 /* ========== 响应式 ========== */
 @media (max-width:1080px){
   .page{padding:0 20px 60px}
@@ -338,6 +369,7 @@ a{color:inherit}
   .dbody{grid-template-columns:270px 1fr;gap:18px}
   .top{gap:16px}
   .opts{gap:10px}
+  .mcards{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
 @media (max-width:820px){
   .scroll-tip{display:block}
@@ -388,6 +420,8 @@ a{color:inherit}
   .ply{min-height:40px}
   .chead{flex-wrap:wrap}
   .chead .hint{order:3;flex-basis:100%;margin-top:-4px}
+  .mcards{grid-template-columns:1fr}
+  .tkeys{grid-template-columns:repeat(4,minmax(0,1fr))}
 }
 @media (prefers-reduced-motion:reduce){
   *{transition:none!important;animation:none!important}
@@ -417,6 +451,7 @@ a{color:inherit}
       <button class="tab" data-mode="chord" role="tab" aria-selected="true">和弦指法</button>
       <button class="tab" data-mode="scale" role="tab" aria-selected="false">音阶指板</button>
       <button class="tab" data-mode="custom" role="tab" aria-selected="false">自由指板</button>
+      <button class="tab" data-mode="train" role="tab" aria-selected="false">记音训练</button>
     </nav>
     <div class="opts">
       <label class="opt">调弦
@@ -577,6 +612,35 @@ a{color:inherit}
         </div>
       </div>
       <div class="cfoot-note">音名随当前调弦变化；自由指板不受变调夹影响。</div>
+    </section>
+  </div>
+
+  <!-- ===== 视图：记音训练 ===== -->
+  <div id="trainView" hidden>
+    <section>
+      <div class="sec-head">
+        <h2>记 音 四 招</h2>
+        <span class="hint">点一条，指板会亮出对应位置</span>
+      </div>
+      <div class="mcards" id="mcards"></div>
+    </section>
+
+    <section class="train">
+      <div class="sec-head">
+        <h2>练 习</h2>
+        <span class="hint" id="tStat">连对 0 · 正确率 –</span>
+        <div class="side"><button class="mini" id="tNext">换一题</button></div>
+      </div>
+      <div class="tbar" id="tModes">
+        <button class="tmode" data-tmode="method" aria-pressed="true">方法演示</button>
+        <button class="tmode" data-tmode="read" aria-pressed="false">看位置猜音名</button>
+        <button class="tmode" data-tmode="find" aria-pressed="false">给音名找位置</button>
+      </div>
+      <div class="tprompt" id="tPrompt"></div>
+      <div class="neckwrap"><div id="trainNeck"></div></div>
+      <div class="scroll-tip">左右滑动查看全部品位，或点「竖排指板」一屏看全</div>
+      <div class="tkeys" id="tKeys"></div>
+      <div class="cfoot-note" id="tNote">音名按当前记谱方式显示，换调弦后指板音名同步变化。练熟音名再切到「音阶指板」看七声音阶的形状，两边对着记最快。</div>
     </section>
   </div>
 
@@ -1223,8 +1287,10 @@ function route(){
   el('chordView').hidden = mode !== 'chord';
   el('scaleView').hidden = mode !== 'scale';
   el('customView').hidden = mode !== 'custom';
-  el('console').hidden = mode === 'custom';
+  el('trainView').hidden = mode !== 'train';
+  el('console').hidden = mode === 'custom' || mode === 'train';
   if (mode === 'custom'){ renderCustom(); return; }
+  if (mode === 'train'){ renderTrain(); return; }
   renderConsole();
   if (mode === 'chord') renderChord(); else renderScale();
 }
@@ -1361,6 +1427,178 @@ function playCustom(){
   ms.forEach((m, i) => pluck(m, t0 + i * 0.15, 0.16, 1.5));
 }
 
+/* ========== 记音训练 ========== */
+const METHODS = [
+  {id:'open12', t:'空弦 + 十二品',
+   x:'六根空弦 E A D G B E 就是十二个地标。每根弦的 12 品与空弦同名，从空弦到 12 品正好走完一轮十二个音。',
+   cells:() => { const a = []; for (let s = 0; s < 6; s++){ a.push({s, f:0}, {s, f:12}); } return a; }},
+  {id:'f57', t:'五品 / 七品锚点',
+   x:'5 品和 7 品是手最常经过的两行。把这两行的音名记熟，再向两侧推两三品，大部分位置就有了参照。',
+   cells:() => { const a = []; for (let s = 0; s < 6; s++){ a.push({s, f:5}, {s, f:7}); } return a; }},
+  {id:'fifth', t:'五品推弦',
+   x:'每根弦的 5 品等于下一根弦的空弦音，只有 3 弦到 2 弦差一品（3 弦 4 品才是 2 弦空弦 B）。记住一根弦就能推到相邻弦。',
+   cells:() => [{s:0,f:5},{s:1,f:0},{s:1,f:5},{s:2,f:0},{s:2,f:5},{s:3,f:0},{s:3,f:4},{s:4,f:0},{s:4,f:5},{s:5,f:0}]},
+  {id:'octave', t:'八度形状',
+   x:'同一个音隔一根弦、向右两品会再出现一次；跨过 2 弦时要多一品。记住一个音，同名的其它位置就能顺藤摸瓜。',
+   cells:() => [{s:0,f:0},{s:2,f:2},{s:4,f:5},{s:1,f:7},{s:3,f:9}]},
+];
+
+function trainPC(s, f){
+  return (TUNINGS[state.tuning].midi[s] + f) % 12;
+}
+
+function drawDot(g, f, s, fill, label, txt, r){
+  const p = boardPoint(g, f, s);
+  return `<g><circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="${r || 12.4}" fill="${fill}"/>` +
+    (label ? `<text x="${p.x.toFixed(1)}" y="${(p.y + 3.6).toFixed(1)}" text-anchor="middle" font-size="${label.length > 2 ? 7.6 : 9.2}" fill="${txt}">${label}</text>` : '') +
+    `</g>`;
+}
+
+function findCell(pc){
+  const midi = TUNINGS[state.tuning].midi;
+  for (let f = 0; f <= 12; f++){
+    for (let s = 0; s < 6; s++) if ((midi[s] + f) % 12 === pc) return {s, f};
+  }
+  return null;
+}
+
+function trainSVG(){
+  const g = boardGeo();
+  const t = state.train;
+  const midi = TUNINGS[state.tuning].midi;
+  const askPc = t.mode === 'read' && t.target ? trainPC(t.target.s, t.target.f) : 0;
+  const refPc = t.mode === 'find' && t.target != null ? t.target : askPc;
+  const useSharp = isSharpSpelling(refPc, state.acc);
+  let out = boardMeta(g);
+
+  if (t.mode === 'method'){
+    const m = METHODS.find(x => x.id === t.method) || METHODS[0];
+    m.cells().forEach(c => {
+      out += drawDot(g, c.f, c.s, '#D3A24E', noteName(trainPC(c.s, c.f), useSharp), '#1A1209');
+    });
+  } else if (t.mode === 'read'){
+    if (t.target){
+      if (t.fb){
+        out += drawDot(g, t.target.f, t.target.s, '#6F9A8C', noteName(trainPC(t.target.s, t.target.f), useSharp), '#0F0C0A');
+      } else {
+        const p = boardPoint(g, t.target.f, t.target.s);
+        out += `<g><circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="13" fill="none" stroke="#E9DDC5" stroke-width="1.2" opacity=".8"/>`;
+        out += `<text x="${p.x.toFixed(1)}" y="${(p.y + 5).toFixed(1)}" text-anchor="middle" font-size="13" fill="#E9DDC5" opacity=".9">?</text></g>`;
+      }
+    }
+  } else {
+    if (t.fb){
+      if (t.fb.wrongS != null) out += drawDot(g, t.fb.wrongF, t.fb.wrongS, 'rgba(233,221,197,.32)', noteName(trainPC(t.fb.wrongS, t.fb.wrongF), useSharp), '#0F0C0A');
+      if (t.fb.correct) out += drawDot(g, t.fb.correct.f, t.fb.correct.s, '#6F9A8C', noteName(t.target, useSharp), '#0F0C0A');
+    }
+    for (let s = 0; s < 6; s++){
+      for (let f = 0; f <= 15; f++){
+        const fs = g.fretSpan(f), ss = g.strSpan(s);
+        const x = g.V ? ss.a : fs.a, y = g.V ? fs.a : ss.a;
+        const w = g.V ? ss.s : fs.s, h = g.V ? fs.s : ss.s;
+        out += `<rect class="hit" data-s="${s}" data-f="${f}" x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${w.toFixed(1)}" height="${h.toFixed(1)}" fill="transparent"/>`;
+      }
+    }
+  }
+  return `<svg${g.V ? ' class="vboard"' : ''} viewBox="0 0 ${g.W} ${g.H}" role="img" aria-label="记音训练指板">${out}</svg>`;
+}
+
+function renderTrain(){
+  const t = state.train;
+  document.querySelectorAll('#tModes .tmode').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.tmode === t.mode)));
+  document.querySelectorAll('#mcards .mcard').forEach(c => c.setAttribute('aria-pressed', String(t.mode === 'method' && c.dataset.m === t.method)));
+  el('tNext').hidden = t.mode === 'method';
+  el('trainNeck').innerHTML = trainSVG();
+  el('tStat').textContent = `连对 ${t.streak} · 正确率 ${t.asked ? Math.round(t.right / t.asked * 100) + '%' : '–'}`;
+
+  const keys = el('tKeys');
+  const prompt = el('tPrompt');
+  prompt.className = 'tprompt';
+
+  if (t.mode === 'read' && t.target){
+    const useSharp = isSharpSpelling(trainPC(t.target.s, t.target.f), state.acc);
+    keys.hidden = false;
+    keys.innerHTML = Array.from({length:12}, (_, pc) => `<button class="tkey" data-pc="${pc}">${noteName(pc, useSharp)}</button>`).join('');
+  } else {
+    keys.hidden = true;
+    keys.innerHTML = '';
+  }
+
+  if (t.mode === 'method'){
+    const m = METHODS.find(x => x.id === t.method) || METHODS[0];
+    prompt.innerHTML = `<b>${m.t}</b><br><span style="font-size:12.5px;color:var(--dim)">${m.x}</span>`;
+  } else if (t.mode === 'read'){
+    if (!t.target){ prompt.textContent = '准备中…'; return; }
+    const s = t.target.s, f = t.target.f;
+    if (t.fb){
+      prompt.className = 'tprompt ' + (t.fb.ok ? 'ok' : 'no');
+      prompt.innerHTML = (t.fb.ok ? '正确！' : '答案是 ') +
+        `<b>${noteName(trainPC(s, f), isSharpSpelling(trainPC(s, f), state.acc))}</b>` +
+        `　${6 - s} 弦 ${f ? f + ' 品' : '空弦'}`;
+    } else {
+      prompt.innerHTML = `${6 - s} 弦　<b>${f ? f + ' 品' : '空弦'}</b>是什么音？`;
+    }
+  } else {
+    if (t.target == null){ prompt.textContent = '准备中…'; return; }
+    const nm = noteName(t.target, isSharpSpelling(t.target, state.acc));
+    if (t.fb){
+      prompt.className = 'tprompt ' + (t.fb.ok ? 'ok' : 'no');
+      prompt.innerHTML = t.fb.ok ? `正确！<b>${nm}</b>` : `这一处不是 ${nm}，看指板上标绿的位置`;
+    } else {
+      prompt.innerHTML = `在指板上找出 <b>${nm}</b>，点任意一个位置`;
+    }
+  }
+}
+
+function newTrainQ(){
+  const t = state.train;
+  if (t.mode === 'method') return;
+  t.qid++;
+  t.fb = null;
+  const rnd = n => Math.floor(Math.random() * n);
+  if (t.mode === 'read'){
+    t.target = {s:rnd(6), f:rnd(13)};
+  } else {
+    let pc;
+    do { pc = rnd(12); } while (pc === t.lastPc);
+    t.lastPc = pc;
+    t.target = pc;
+  }
+  renderTrain();
+}
+
+function answerRead(pc){
+  const t = state.train;
+  if (t.mode !== 'read' || !t.target || t.fb) return;
+  const midi = TUNINGS[state.tuning].midi;
+  const actual = trainPC(t.target.s, t.target.f);
+  const ok = pc === actual;
+  t.asked++;
+  if (ok){ t.right++; t.streak++; } else { t.streak = 0; }
+  t.fb = {ok};
+  const ac = ensureAudio();
+  if (ac) pluck(midi[t.target.s] + t.target.f, ac.currentTime + 0.03, 0.18, 1.1);
+  renderTrain();
+  const qid = t.qid;
+  setTimeout(() => { if (state.train.qid === qid) newTrainQ(); }, ok ? 950 : 1600);
+}
+
+function answerFind(s, f){
+  const t = state.train;
+  if (t.mode !== 'find' || t.target == null || t.fb) return;
+  const midi = TUNINGS[state.tuning].midi;
+  const pc = trainPC(s, f);
+  const ok = pc === t.target;
+  t.asked++;
+  if (ok){ t.right++; t.streak++; } else { t.streak = 0; }
+  t.fb = {ok, wrongS: ok ? null : s, wrongF: ok ? null : f, correct: ok ? {s, f} : findCell(t.target)};
+  const ac = ensureAudio();
+  if (ac) pluck(midi[s] + f, ac.currentTime + 0.03, 0.18, 1.1);
+  renderTrain();
+  const qid = t.qid;
+  setTimeout(() => { if (state.train.qid === qid) newTrainQ(); }, ok ? 950 : 1700);
+}
+
 /* ========== 初始状态 ========== */
 const state = {
   mode:'chord',
@@ -1376,6 +1614,7 @@ const state = {
   neckScale:false,
   custom:[],
   orient:'h',
+  train:{mode:'method', method:'open12', target:null, fb:null, streak:0, asked:0, right:0, qid:0, lastPc:-1},
 };
 
 /* ========== 事件 ========== */
@@ -1470,6 +1709,38 @@ function init(){
     state.custom = [];
     renderCustom();
   });
+
+  el('mcards').innerHTML = METHODS.map(m =>
+    `<button class="mcard" data-m="${m.id}" aria-pressed="false"><span class="mt">${m.t}</span><span class="mx">${m.x}</span></button>`
+  ).join('');
+  el('mcards').addEventListener('click', e => {
+    const c = e.target.closest('.mcard');
+    if (!c) return;
+    state.train.mode = 'method';
+    state.train.method = c.dataset.m;
+    renderTrain();
+  });
+  el('tModes').addEventListener('click', e => {
+    const b = e.target.closest('.tmode');
+    if (!b) return;
+    const m = b.dataset.tmode;
+    if (m === state.train.mode) return;
+    state.train.mode = m;
+    state.train.target = null;
+    state.train.fb = null;
+    if (m === 'method') renderTrain(); else newTrainQ();
+  });
+  el('tKeys').addEventListener('click', e => {
+    const k = e.target.closest('.tkey');
+    if (!k) return;
+    answerRead(+k.dataset.pc);
+  });
+  el('trainNeck').addEventListener('click', e => {
+    const cell = e.target.closest('.hit');
+    if (!cell) return;
+    answerFind(+cell.dataset.s, +cell.dataset.f);
+  });
+  el('tNext').addEventListener('click', newTrainQ);
 
   el('diaChips').addEventListener('click', e => {
     const chip = e.target.closest('.dchip');
