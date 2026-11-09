@@ -362,6 +362,38 @@ a{color:inherit}
 .tkey:hover{color:var(--bone);border-color:rgba(232,214,182,.32);background:rgba(232,214,182,.04)}
 .tkey:active{transform:translateY(1px)}
 
+/* ========== 快捷键 ========== */
+.klink{font-size:inherit;color:var(--bone-2);padding:0;border-bottom:1px dotted rgba(232,214,182,.42);border-radius:0}
+.klink:hover{color:var(--brass);border-bottom-color:rgba(211,162,78,.6)}
+.kbdb{position:fixed;inset:0;z-index:60;display:flex;align-items:center;justify-content:center;padding:24px;background:rgba(8,5,4,.74)}
+.kbdb[hidden]{display:none}
+.kbd-card{
+  width:min(560px,100%);max-height:calc(100vh - 48px);overflow:auto;
+  background:#141010;border:1px solid rgba(232,214,182,.22);border-radius:3px;
+  padding:20px 22px 18px;box-shadow:0 24px 60px rgba(0,0,0,.6);
+}
+.kbd-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:6px}
+.kbd-head h3{font-family:var(--serif);font-size:15px;font-weight:500;letter-spacing:.16em;color:var(--bone)}
+.kbd-sub{display:block;margin-top:6px;font-size:11px;letter-spacing:.04em;color:var(--mute)}
+.kbd-x{font-size:18px;line-height:1;color:var(--dim);padding:0 2px}
+.kbd-x:hover{color:var(--bone)}
+.kbd-rows{margin-top:14px;border-top:1px solid rgba(232,214,182,.09)}
+.krow{display:flex;align-items:flex-start;gap:14px;padding:8px 0;border-bottom:1px solid rgba(232,214,182,.09)}
+.kcaps{display:flex;gap:4px;flex:0 0 150px;flex-wrap:wrap;padding-top:2px}
+.kc{
+  min-width:26px;height:24px;padding:0 7px;display:inline-flex;align-items:center;justify-content:center;
+  font-size:11.5px;letter-spacing:.04em;color:var(--bone-2);
+  border:1px solid rgba(232,214,182,.24);border-bottom-width:2px;border-radius:2px;
+  background:rgba(233,221,197,.05);
+}
+.ktx{font-size:11.5px;line-height:1.8;color:var(--dim)}
+.kbd-note{margin-top:12px;font-size:10.5px;line-height:1.7;color:var(--mute)}
+@media (max-width:560px){
+  .krow{flex-direction:column;gap:7px}
+  .kcaps{flex:none}
+  .ktx{font-size:11px;padding-top:0}
+}
+
 /* ========== 响应式 ========== */
 @media (max-width:1080px){
   .page{padding:0 20px 60px}
@@ -647,13 +679,29 @@ a{color:inherit}
   <footer class="foot">
     <div>
       <b>说明</b> · 指法由和弦音自动推算，列出各把位的常用按法；实际演奏可按手型微调。<br>
-      变调夹指法按“实际音高”计算，图中横条为变调夹位置，夹位以下的音不再使用。
+      变调夹指法按“实际音高”计算，图中横条为变调夹位置，夹位以下的音不再使用。<br>
+      键盘 · 1–4 切视图 · ↑↓ 换根音 · ←→ 换类型 · 空格播放 · <button class="klink" id="kbdBtn" aria-expanded="false">全部快捷键</button>
     </div>
     <div style="text-align:right">
       <b>调弦</b> · 标准 / Drop D / 降半音 / Open G / DADGAD<br>
       和弦图从六弦（左）到一弦（右），数字为左手手指。
     </div>
   </footer>
+</div>
+
+<!-- ===== 快捷键速查 ===== -->
+<div class="kbdb" id="kbdWrap" role="dialog" aria-modal="true" aria-labelledby="kbdTitle" hidden>
+  <div class="kbd-card" tabindex="-1">
+    <div class="kbd-head">
+      <div>
+        <h3 id="kbdTitle">键 盘 快 捷 键</h3>
+        <span class="kbd-sub">手不离琴，也能把整块指板走完</span>
+      </div>
+      <button class="kbd-x" id="kbdClose" aria-label="关闭快捷键表">×</button>
+    </div>
+    <div class="kbd-rows" id="kbdRows"></div>
+    <div class="kbd-note">光标停在下拉框或输入框里时，方向键仍归给控件；点一下页面空白处再按即可。</div>
+  </div>
 </div>
 <script>
 /* ========== 数据 ========== */
@@ -1760,7 +1808,126 @@ function init(){
   }
   el('tuning').value = state.tuning;
   el('capo').value = state.capo;
+
+  /* —— 快捷键 —— */
+  el('kbdRows').innerHTML = SHORTCUTS.map(s =>
+    `<div class="krow"><div class="kcaps">${s.k.map(x => `<span class="kc">${x}</span>`).join('')}</div><div class="ktx">${s.t}</div></div>`
+  ).join('');
+  el('kbdBtn').addEventListener('click', () => toggleKbd());
+  el('kbdClose').addEventListener('click', () => toggleKbd(false));
+  el('kbdWrap').addEventListener('click', e => {
+    if (e.target === el('kbdWrap')) toggleKbd(false);
+  });
+  document.addEventListener('keydown', onKey);
+
   route();
+}
+
+/* ========== 键盘 ========== */
+const SHORTCUTS = [
+  {k:['1','2','3','4'], t:'切视图：和弦指法 / 音阶指板 / 自由指板 / 记音训练'},
+  {k:['↑','↓'], t:'根音上一个 / 下一个（和弦、音阶视图）'},
+  {k:['←','→'], t:'和弦或音阶类型上一个 / 下一个'},
+  {k:['Space'], t:'播放：扫弦、音阶上行、试听已选；训练里换下一题'},
+  {k:['A'], t:'和弦分解试听'},
+  {k:['D'], t:'音阶下行试听'},
+  {k:['V'], t:'和弦指板：音名 / 级数'},
+  {k:['L'], t:'左手持琴'},
+  {k:['R'], t:'横排 / 竖排指板'},
+  {k:['X'], t:'清空自由指板的标记'},
+  {k:['?'], t:'打开这张快捷键表'},
+  {k:['Esc'], t:'关闭这张表'},
+];
+
+function toggleKbd(open){
+  const w = el('kbdWrap');
+  const on = open === undefined ? w.hidden : open;
+  w.hidden = !on;
+  el('kbdBtn').setAttribute('aria-expanded', String(on));
+  if (on) w.querySelector('.kbd-card').focus();
+}
+
+function cycleRoot(d){
+  const i = (state.root + d + ROOTS.length) % ROOTS.length;
+  const b = document.querySelector(`#roots .root[data-pc="${i}"]`);
+  if (b) b.click();
+}
+
+function cycleType(d){
+  const list = state.mode === 'chord' ? QUALITIES : SCALES;
+  const cur = state.mode === 'chord' ? state.quality : state.scale;
+  let i = list.findIndex(x => x.id === cur);
+  if (i < 0) i = 0;
+  const nx = list[(i + d + list.length) % list.length];
+  const b = document.querySelector(`#quals .qual[data-key="${nx.id}"]`);
+  if (b) b.click();
+}
+
+function playCurrent(){
+  const m = state.mode;
+  if (m === 'chord'){ el('playStrum').click(); return; }
+  if (m === 'scale'){ el('playScaleUp').click(); return; }
+  if (m === 'custom'){ if (!el('playCustom').disabled) el('playCustom').click(); return; }
+  if (state.train.mode === 'method'){
+    const b = document.querySelector('#tModes .tmode[data-tmode="read"]');
+    if (b) b.click();
+  } else {
+    el('tNext').click();
+  }
+}
+
+function onKey(e){
+  if (e.metaKey || e.ctrlKey || e.altKey) return;
+  const tag = (e.target.tagName || '').toLowerCase();
+  if (tag === 'select' || tag === 'input' || tag === 'textarea') return;
+  const w = el('kbdWrap');
+
+  if (e.key === 'Escape'){
+    if (!w.hidden){ toggleKbd(false); e.preventDefault(); }
+    return;
+  }
+  if (e.key === '?' || e.key === '/'){
+    e.preventDefault();
+    toggleKbd();
+    return;
+  }
+  if (!w.hidden) return;
+
+  const k = e.key;
+  if (k === ' '){
+    e.preventDefault();
+    if (!e.repeat) playCurrent();
+    return;
+  }
+  const tabMap = {'1':'chord', '2':'scale', '3':'custom', '4':'train'};
+  if (tabMap[k]){
+    e.preventDefault();
+    const t = document.querySelector(`.tab[data-mode="${tabMap[k]}"]`);
+    if (t) t.click();
+    return;
+  }
+  if (k === 'ArrowUp' || k === 'ArrowDown'){
+    if (state.mode === 'chord' || state.mode === 'scale'){
+      e.preventDefault();
+      cycleRoot(k === 'ArrowUp' ? -1 : 1);
+    }
+    return;
+  }
+  if (k === 'ArrowLeft' || k === 'ArrowRight'){
+    if (state.mode === 'chord' || state.mode === 'scale'){
+      e.preventDefault();
+      cycleType(k === 'ArrowLeft' ? -1 : 1);
+    }
+    return;
+  }
+
+  const low = k.toLowerCase();
+  if (low === 'a' && state.mode === 'chord'){ e.preventDefault(); el('playArp').click(); return; }
+  if (low === 'd' && state.mode === 'scale'){ e.preventDefault(); el('playScaleDown').click(); return; }
+  if (low === 'v' && state.mode === 'chord'){ e.preventDefault(); el('neckModeChord').click(); return; }
+  if (low === 'l'){ e.preventDefault(); el('lefty').click(); return; }
+  if (low === 'r'){ e.preventDefault(); el('orient').click(); return; }
+  if (low === 'x' && state.mode === 'custom' && state.custom.length){ e.preventDefault(); el('clearCustom').click(); }
 }
 
 init();
