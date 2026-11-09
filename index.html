@@ -316,6 +316,18 @@ a{color:inherit}
 }
 .foot b{color:var(--dim);font-weight:400}
 
+/* ========== 自由指板 ========== */
+.cstat{font-size:11px;color:var(--mute);letter-spacing:.04em}
+.custom-foot{display:flex;align-items:center;gap:16px;margin-top:14px;flex-wrap:wrap}
+.cnotes{font-family:var(--serif);font-size:17px;letter-spacing:.06em;color:var(--bone);display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.cnotes i{font-style:normal;font-size:12px;color:var(--mute)}
+.cempty{font-family:var(--sans);font-size:12px;letter-spacing:.04em;color:var(--mute)}
+.cfoot-note{margin-top:9px;font-size:10.5px;letter-spacing:.04em;color:var(--mute)}
+.neckwrap svg .hit{cursor:pointer}
+.neckwrap svg .hit:hover{fill:rgba(211,162,78,.13)}
+.play:disabled{opacity:.35;cursor:default;transform:none}
+.play:disabled:hover{background:none;border-color:var(--line);color:var(--dim)}
+
 /* ========== 响应式 ========== */
 @media (max-width:1080px){
   .page{padding:0 20px 60px}
@@ -371,6 +383,8 @@ a{color:inherit}
   .opt select{height:36px}
   .mini{min-height:36px}
   .ply{min-height:40px}
+  .chead{flex-wrap:wrap}
+  .chead .hint{order:3;flex-basis:100%;margin-top:-4px}
 }
 @media (prefers-reduced-motion:reduce){
   *{transition:none!important;animation:none!important}
@@ -399,6 +413,7 @@ a{color:inherit}
     <nav class="tabs" role="tablist" aria-label="模式">
       <button class="tab" data-mode="chord" role="tab" aria-selected="true">和弦指法</button>
       <button class="tab" data-mode="scale" role="tab" aria-selected="false">音阶指板</button>
+      <button class="tab" data-mode="custom" role="tab" aria-selected="false">自由指板</button>
     </nav>
     <div class="opts">
       <label class="opt">调弦
@@ -415,7 +430,7 @@ a{color:inherit}
     </div>
   </header>
 
-  <section class="console" aria-label="和弦选择">
+  <section class="console" id="console" aria-label="和弦选择">
     <div class="crow">
       <span class="clabel">根音</span>
       <div class="cbody"><div class="roots" id="roots"></div></div>
@@ -538,6 +553,27 @@ a{color:inherit}
       <div class="dl">顺 阶 和 弦</div>
       <div class="chips" id="diaChips"></div>
     </div>
+  </div>
+
+  <!-- ===== 视图：自由指板 ===== -->
+  <div id="customView" hidden>
+    <section class="neck" style="margin-top:26px">
+      <div class="sec-head chead">
+        <h2>自 由 指 板</h2>
+        <span class="hint">点击弦位发声，再点取消</span>
+        <div class="side"><span class="cstat" id="cCount">0 个音</span></div>
+      </div>
+      <div class="neckwrap"><div id="customNeck"></div></div>
+      <div class="scroll-tip">左右滑动查看全部品位</div>
+      <div class="custom-foot">
+        <div class="cnotes" id="cNotes"><span class="cempty">尚未标记音位</span></div>
+        <div class="player">
+          <button class="play" id="playCustom" disabled>试听已选</button>
+          <button class="play ghost" id="clearCustom" disabled>清空</button>
+        </div>
+      </div>
+      <div class="cfoot-note">音名随当前调弦变化；自由指板不受变调夹影响。</div>
+    </section>
   </div>
 
   <footer class="foot">
@@ -1132,10 +1168,14 @@ function renderScale(){
 }
 
 function route(){
-  el('chordView').hidden = state.mode !== 'chord';
-  el('scaleView').hidden = state.mode !== 'scale';
+  const mode = state.mode;
+  el('chordView').hidden = mode !== 'chord';
+  el('scaleView').hidden = mode !== 'scale';
+  el('customView').hidden = mode !== 'custom';
+  el('console').hidden = mode === 'custom';
+  if (mode === 'custom'){ renderCustom(); return; }
   renderConsole();
-  if (state.mode === 'chord') renderChord(); else renderScale();
+  if (mode === 'chord') renderChord(); else renderScale();
 }
 /* ========== 声音 ========== */
 let AC = null, MASTER = null, WAVE = null;
@@ -1204,6 +1244,90 @@ function playScale(dir){
   seq.forEach((m,i) => pluck(m, t0 + i * 0.095, 0.16, 1.5));
 }
 
+/* ========== 自由指板 ========== */
+function customNeckSVG(refPc){
+  const W = 800, H = 292;
+  const padL = 34, padT = 36, padB = 26, padR = 20, openW = 32;
+  const cellW = (W - padL - padR - openW) / 15;
+  const top = padT, bot = H - padB, rowH = (bot - top) / 6;
+  const xOpen = padL + openW / 2;
+  const xF = f => f === 0 ? xOpen : padL + openW + (f - 0.5) * cellW;
+  const yS = s => top + (s + 0.5) * rowH;
+  const midi = TUNINGS[state.tuning].midi;
+  const useSharp = isSharpSpelling(refPc, state.acc);
+  let out = '';
+
+  out += `<rect x="${padL-1.5}" y="${top}" width="3.5" height="${bot-top}" fill="#D8C6A4" opacity=".85"/>`;
+  for (let f = 1; f <= 15; f++){
+    const x = padL + openW + (f - 1) * cellW;
+    out += `<line x1="${x}" y1="${top}" x2="${x}" y2="${bot}" stroke="rgba(233,221,197,.18)" stroke-width="1"/>`;
+  }
+  for (let s = 0; s < 6; s++){
+    out += `<line x1="${padL}" y1="${yS(s)}" x2="${W-padR}" y2="${yS(s)}" stroke="rgba(233,221,197,.34)" stroke-width="${(2.2 - s*0.3).toFixed(2)}"/>`;
+    out += `<text x="12" y="${yS(s)+4}" font-size="10" fill="#6C5C4C">${6-s}</text>`;
+  }
+  out += `<text x="${xOpen}" y="${padT-14}" text-anchor="middle" font-size="9" fill="#6C5C4C">空弦</text>`;
+  for (let f = 1; f <= 15; f++){
+    out += `<text x="${xF(f)}" y="${padT-14}" text-anchor="middle" font-size="9" fill="#6C5C4C">${f}</text>`;
+  }
+
+  state.custom.forEach(m => {
+    const pc = (midi[m.s] + m.f) % 12;
+    const label = noteName(pc, useSharp);
+    out += `<g><circle cx="${xF(m.f).toFixed(1)}" cy="${yS(m.s).toFixed(1)}" r="12.4" fill="#E9DDC5"/>`;
+    out += `<text x="${xF(m.f).toFixed(1)}" y="${(yS(m.s)+3.6).toFixed(1)}" text-anchor="middle" font-size="${label.length > 2 ? 7.6 : 9.2}" fill="#0F0C0A">${label}</text></g>`;
+  });
+
+  for (let s = 0; s < 6; s++){
+    for (let f = 0; f <= 15; f++){
+      const x = f === 0 ? padL : padL + openW + (f - 1) * cellW;
+      const w = f === 0 ? openW : cellW;
+      out += `<rect class="hit" data-s="${s}" data-f="${f}" x="${x.toFixed(1)}" y="${(top + s*rowH).toFixed(1)}" width="${w.toFixed(1)}" height="${rowH.toFixed(1)}" fill="transparent"/>`;
+    }
+  }
+  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="自由指板，点击弦位发声">${out}</svg>`;
+}
+
+function renderCustom(){
+  const midi = TUNINGS[state.tuning].midi;
+  const sorted = state.custom.slice().sort((a, b) => (midi[a.s] + a.f) - (midi[b.s] + b.f));
+  const refPc = sorted.length ? (midi[sorted[0].s] + sorted[0].f) % 12 : 0;
+  el('customNeck').innerHTML = customNeckSVG(refPc);
+  el('cCount').textContent = state.custom.length ? state.custom.length + ' 个音' : '0 个音';
+
+  const pcs = [];
+  sorted.forEach(m => {
+    const pc = (midi[m.s] + m.f) % 12;
+    if (pcs.indexOf(pc) < 0) pcs.push(pc);
+  });
+  if (!pcs.length){
+    el('cNotes').innerHTML = '<span class="cempty">尚未标记音位</span>';
+  } else {
+    const useSharp = isSharpSpelling(refPc, state.acc);
+    el('cNotes').innerHTML = pcs.map(pc => `<span>${noteName(pc, useSharp)}</span>`).join('<i>·</i>');
+  }
+  el('playCustom').disabled = !state.custom.length;
+  el('clearCustom').disabled = !state.custom.length;
+}
+
+function toggleCustom(s, f){
+  const i = state.custom.findIndex(m => m.s === s && m.f === f);
+  if (i >= 0) state.custom.splice(i, 1); else state.custom.push({s, f});
+  const ac = ensureAudio();
+  if (ac) pluck(TUNINGS[state.tuning].midi[s] + f, ac.currentTime + 0.03, 0.18, 1.05);
+  renderCustom();
+}
+
+function playCustom(){
+  if (!state.custom.length) return;
+  const ac = ensureAudio();
+  if (!ac) return;
+  const midi = TUNINGS[state.tuning].midi;
+  const ms = state.custom.map(m => midi[m.s] + m.f).sort((a, b) => a - b);
+  const t0 = ac.currentTime + 0.06;
+  ms.forEach((m, i) => pluck(m, t0 + i * 0.15, 0.16, 1.5));
+}
+
 /* ========== 初始状态 ========== */
 const state = {
   mode:'chord',
@@ -1217,6 +1341,7 @@ const state = {
   selected:0,
   neckChord:false,
   neckScale:false,
+  custom:[],
 };
 
 /* ========== 事件 ========== */
@@ -1293,6 +1418,17 @@ function init(){
   el('neckModeScale').addEventListener('click', () => {
     state.neckScale = !state.neckScale;
     renderScale();
+  });
+
+  el('customNeck').addEventListener('click', e => {
+    const cell = e.target.closest('.hit');
+    if (!cell) return;
+    toggleCustom(+cell.dataset.s, +cell.dataset.f);
+  });
+  el('playCustom').addEventListener('click', playCustom);
+  el('clearCustom').addEventListener('click', () => {
+    state.custom = [];
+    renderCustom();
   });
 
   el('diaChips').addEventListener('click', e => {
