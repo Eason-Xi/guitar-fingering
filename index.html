@@ -327,6 +327,9 @@ a{color:inherit}
 .neckwrap svg .hit:hover{fill:rgba(211,162,78,.13)}
 .play:disabled{opacity:.35;cursor:default;transform:none}
 .play:disabled:hover{background:none;border-color:var(--line);color:var(--dim)}
+.neckwrap svg.vboard{min-width:0;max-width:300px;margin:0 auto}
+.page.vert .neckwrap{max-width:340px;margin-left:auto;margin-right:auto}
+.page.vert .scroll-tip{display:none}
 
 /* ========== 响应式 ========== */
 @media (max-width:1080px){
@@ -423,6 +426,7 @@ a{color:inherit}
         <select id="capo" aria-label="变调夹位置"></select>
       </label>
       <button class="lever" id="lefty" aria-pressed="false">左手持琴</button>
+      <button class="lever" id="orient" aria-pressed="false">竖排指板</button>
       <div class="acc" role="group" aria-label="记谱方式">
         <button data-acc="sharp" aria-pressed="true" title="按升号记谱">♯</button>
         <button data-acc="flat" aria-pressed="false" title="按降号记谱">♭</button>
@@ -957,53 +961,100 @@ function chordSVG(v, opt){
 }
 
 /* dots: Map pc -> {label, guide} */
-function neckSVG(dots, rootPc, opt){
-  const W = 800, H = 292;
-  const padL = 34, padT = 36, padB = 26, padR = 20;
-  const openW = 32;
+function boardGeo(){
+  if (state.orient === 'v'){
+    const W = 252, H = 664, padL = 40, padT = 34, padR = 14, padB = 18, openH = 30;
+    const colW = (W - padL - padR) / 6;
+    const rowH = (H - padT - padB - openH) / 15;
+    return {
+      V:true, W, H, padL, padT, padR, padB, openH, colW, rowH,
+      fretC: f => f === 0 ? padT + openH / 2 : padT + openH + (f - 0.5) * rowH,
+      strC: s => padL + (s + 0.5) * colW,
+      fretSpan: f => f === 0 ? {a: padT, s: openH} : {a: padT + openH + (f - 1) * rowH, s: rowH},
+      strSpan: s => ({a: padL + s * colW, s: colW}),
+    };
+  }
+  const W = 800, H = 292, padL = 34, padT = 36, padB = 26, padR = 20, openW = 32;
   const cellW = (W - padL - padR - openW) / 15;
-  const top = padT, bot = H - padB;
-  const rowH = (bot - top) / 6;
-  const xOpen = padL + openW / 2;
-  const xF = f => f === 0 ? xOpen : padL + openW + (f - 0.5) * cellW;
-  const yS = s => top + (s + 0.5) * rowH;
+  const top = padT, bot = H - padB, rowH = (bot - top) / 6;
+  return {
+    V:false, W, H, padL, padT, padR, padB, openW, cellW, rowH,
+    fretC: f => f === 0 ? padL + openW / 2 : padL + openW + (f - 0.5) * cellW,
+    strC: s => top + (s + 0.5) * rowH,
+    fretSpan: f => f === 0 ? {a: padL, s: openW} : {a: padL + openW + (f - 1) * cellW, s: cellW},
+    strSpan: s => ({a: top + s * rowH, s: rowH}),
+  };
+}
+
+function boardMeta(g){
+  let out = '';
+  if (!g.V){
+    out += `<rect x="${g.padL-1.5}" y="${g.padT}" width="3.5" height="${g.H-g.padT-g.padB}" fill="#D8C6A4" opacity=".85"/>`;
+    for (let f = 1; f <= 15; f++){
+      out += `<line x1="${g.fretSpan(f).a}" y1="${g.padT}" x2="${g.fretSpan(f).a}" y2="${g.H-g.padB}" stroke="rgba(233,221,197,.18)" stroke-width="1"/>`;
+    }
+    for (let s = 0; s < 6; s++){
+      out += `<line x1="${g.padL}" y1="${g.strC(s)}" x2="${g.W-g.padR}" y2="${g.strC(s)}" stroke="rgba(233,221,197,.34)" stroke-width="${(2.2-s*0.3).toFixed(2)}"/>`;
+      out += `<text x="12" y="${g.strC(s)+4}" font-size="10" fill="#6C5C4C">${6-s}</text>`;
+    }
+    out += `<text x="${g.fretC(0)}" y="${g.padT-14}" text-anchor="middle" font-size="9" fill="#6C5C4C">空弦</text>`;
+    for (let f = 1; f <= 15; f++){
+      out += `<text x="${g.fretC(f)}" y="${g.padT-14}" text-anchor="middle" font-size="9" fill="#6C5C4C">${f}</text>`;
+    }
+  } else {
+    out += `<rect x="${g.padL}" y="${g.padT-1.5}" width="${g.W-g.padL-g.padR}" height="3.5" fill="#D8C6A4" opacity=".85"/>`;
+    for (let f = 1; f <= 15; f++){
+      out += `<line x1="${g.padL}" y1="${g.fretSpan(f).a}" x2="${g.W-g.padR}" y2="${g.fretSpan(f).a}" stroke="rgba(233,221,197,.18)" stroke-width="1"/>`;
+    }
+    for (let s = 0; s < 6; s++){
+      out += `<line x1="${g.strC(s)}" y1="${g.padT}" x2="${g.strC(s)}" y2="${g.H-g.padB}" stroke="rgba(233,221,197,.34)" stroke-width="${(2.2-s*0.3).toFixed(2)}"/>`;
+      out += `<text x="${g.strC(s)}" y="18" text-anchor="middle" font-size="10" fill="#6C5C4C">${6-s}</text>`;
+    }
+    out += `<text x="${g.padL-8}" y="${g.fretC(0)+3}" text-anchor="end" font-size="8.5" fill="#7D6C59">空弦</text>`;
+    for (let f = 1; f <= 15; f++){
+      out += `<text x="${g.padL-8}" y="${g.fretC(f)+3}" text-anchor="end" font-size="9" fill="#6C5C4C">${f}</text>`;
+    }
+  }
+  return out;
+}
+
+function boardPoint(g, f, s){
+  return g.V ? {x: g.strC(s), y: g.fretC(f)} : {x: g.fretC(f), y: g.strC(s)};
+}
+
+function neckSVG(dots, rootPc, opt){
+  const g = boardGeo();
   const midi = TUNINGS[state.tuning].midi;
   const useSharp = isSharpSpelling(rootPc, state.acc);
-  let out = '';
+  let out = boardMeta(g);
 
-  out += `<rect x="${padL-1.5}" y="${top}" width="3.5" height="${bot-top}" fill="#D8C6A4" opacity=".85"/>`;
-  for (let f = 1; f <= 15; f++){
-    const x = padL + openW + (f - 1) * cellW;
-    out += `<line x1="${x}" y1="${top}" x2="${x}" y2="${bot}" stroke="rgba(233,221,197,.18)" stroke-width="1"/>`;
-  }
-  for (let s = 0; s < 6; s++){
-    out += `<line x1="${padL}" y1="${yS(s)}" x2="${W-padR}" y2="${yS(s)}" stroke="rgba(233,221,197,.34)" stroke-width="${(2.2 - s*0.3).toFixed(2)}"/>`;
-    out += `<text x="12" y="${yS(s)+4}" font-size="10" fill="#6C5C4C">${6-s}</text>`;
-  }
-  out += `<text x="${xOpen}" y="${padT-14}" text-anchor="middle" font-size="9" fill="#6C5C4C">空弦</text>`;
-  for (let f = 1; f <= 15; f++){
-    out += `<text x="${xF(f)}" y="${padT-14}" text-anchor="middle" font-size="9" fill="#6C5C4C">${f}</text>`;
-  }
   if (state.capo > 0){
-    const x = padL + openW + (state.capo - 1) * cellW;
-    out += `<line x1="${x}" y1="${top-4}" x2="${x}" y2="${bot+4}" stroke="#B98A3B" stroke-width="2.5" opacity=".9"/>`;
-    out += `<text x="${padL+openW}" y="12" font-size="9.5" letter-spacing="1" fill="#D3A24E">变调夹 ${state.capo} 品</text>`;
+    const a = g.fretSpan(state.capo).a;
+    if (!g.V){
+      out += `<line x1="${a}" y1="${g.padT-4}" x2="${a}" y2="${g.H-g.padB+4}" stroke="#B98A3B" stroke-width="2.5" opacity=".9"/>`;
+      out += `<text x="${g.padL+g.openW}" y="12" font-size="9.5" letter-spacing="1" fill="#D3A24E">变调夹 ${state.capo} 品</text>`;
+    } else {
+      out += `<line x1="${g.padL-4}" y1="${a}" x2="${g.W-g.padR+4}" y2="${a}" stroke="#B98A3B" stroke-width="2.5" opacity=".9"/>`;
+      out += `<text x="${g.W-g.padR}" y="${g.H-4}" text-anchor="end" font-size="9" letter-spacing="1" fill="#D3A24E">变调夹 ${state.capo} 品</text>`;
+    }
   }
+
   for (let s = 0; s < 6; s++){
     for (let f = 0; f <= 15; f++){
       const pc = (midi[s] + f) % 12;
       const d = dots.get(pc);
       if (!d) continue;
+      const p = boardPoint(g, f, s);
       const isRoot = pc === rootPc;
       const fill = isRoot ? '#D3A24E' : (d.guide ? '#6F9A8C' : '#C3B197');
       const txt = isRoot ? '#1A1209' : '#0F0C0A';
       const dim = (state.capo > 0 && f < state.capo) ? ' opacity=".28"' : '';
       const label = opt.byDegree ? d.label : noteName(pc, useSharp);
-      out += `<g${dim}><circle cx="${xF(f).toFixed(1)}" cy="${yS(s).toFixed(1)}" r="12.4" fill="${fill}"/>`;
-      out += `<text x="${xF(f).toFixed(1)}" y="${(yS(s)+3.6).toFixed(1)}" text-anchor="middle" font-size="${label.length>2?7.6:9.2}" fill="${txt}">${label}</text></g>`;
+      out += `<g${dim}><circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="12.4" fill="${fill}"/>`;
+      out += `<text x="${p.x.toFixed(1)}" y="${(p.y+3.6).toFixed(1)}" text-anchor="middle" font-size="${label.length>2?7.6:9.2}" fill="${txt}">${label}</text></g>`;
     }
   }
-  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${opt.byDegree?'音阶级数指板图':'音名指板图'}">${out}</svg>`;
+  return `<svg${g.V?' class="vboard"':''} viewBox="0 0 ${g.W} ${g.H}" role="img" aria-label="${opt.byDegree?'音阶级数指板图':'音名指板图'}${g.V?'（竖排）':''}">${out}</svg>`;
 }
 
 /* ========== 渲染 ========== */
@@ -1246,46 +1297,28 @@ function playScale(dir){
 
 /* ========== 自由指板 ========== */
 function customNeckSVG(refPc){
-  const W = 800, H = 292;
-  const padL = 34, padT = 36, padB = 26, padR = 20, openW = 32;
-  const cellW = (W - padL - padR - openW) / 15;
-  const top = padT, bot = H - padB, rowH = (bot - top) / 6;
-  const xOpen = padL + openW / 2;
-  const xF = f => f === 0 ? xOpen : padL + openW + (f - 0.5) * cellW;
-  const yS = s => top + (s + 0.5) * rowH;
+  const g = boardGeo();
   const midi = TUNINGS[state.tuning].midi;
   const useSharp = isSharpSpelling(refPc, state.acc);
-  let out = '';
-
-  out += `<rect x="${padL-1.5}" y="${top}" width="3.5" height="${bot-top}" fill="#D8C6A4" opacity=".85"/>`;
-  for (let f = 1; f <= 15; f++){
-    const x = padL + openW + (f - 1) * cellW;
-    out += `<line x1="${x}" y1="${top}" x2="${x}" y2="${bot}" stroke="rgba(233,221,197,.18)" stroke-width="1"/>`;
-  }
-  for (let s = 0; s < 6; s++){
-    out += `<line x1="${padL}" y1="${yS(s)}" x2="${W-padR}" y2="${yS(s)}" stroke="rgba(233,221,197,.34)" stroke-width="${(2.2 - s*0.3).toFixed(2)}"/>`;
-    out += `<text x="12" y="${yS(s)+4}" font-size="10" fill="#6C5C4C">${6-s}</text>`;
-  }
-  out += `<text x="${xOpen}" y="${padT-14}" text-anchor="middle" font-size="9" fill="#6C5C4C">空弦</text>`;
-  for (let f = 1; f <= 15; f++){
-    out += `<text x="${xF(f)}" y="${padT-14}" text-anchor="middle" font-size="9" fill="#6C5C4C">${f}</text>`;
-  }
+  let out = boardMeta(g);
 
   state.custom.forEach(m => {
     const pc = (midi[m.s] + m.f) % 12;
+    const p = boardPoint(g, m.f, m.s);
     const label = noteName(pc, useSharp);
-    out += `<g><circle cx="${xF(m.f).toFixed(1)}" cy="${yS(m.s).toFixed(1)}" r="12.4" fill="#E9DDC5"/>`;
-    out += `<text x="${xF(m.f).toFixed(1)}" y="${(yS(m.s)+3.6).toFixed(1)}" text-anchor="middle" font-size="${label.length > 2 ? 7.6 : 9.2}" fill="#0F0C0A">${label}</text></g>`;
+    out += `<g><circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="12.4" fill="#E9DDC5"/>`;
+    out += `<text x="${p.x.toFixed(1)}" y="${(p.y+3.6).toFixed(1)}" text-anchor="middle" font-size="${label.length > 2 ? 7.6 : 9.2}" fill="#0F0C0A">${label}</text></g>`;
   });
 
   for (let s = 0; s < 6; s++){
     for (let f = 0; f <= 15; f++){
-      const x = f === 0 ? padL : padL + openW + (f - 1) * cellW;
-      const w = f === 0 ? openW : cellW;
-      out += `<rect class="hit" data-s="${s}" data-f="${f}" x="${x.toFixed(1)}" y="${(top + s*rowH).toFixed(1)}" width="${w.toFixed(1)}" height="${rowH.toFixed(1)}" fill="transparent"/>`;
+      const fs = g.fretSpan(f), ss = g.strSpan(s);
+      const x = g.V ? ss.a : fs.a, y = g.V ? fs.a : ss.a;
+      const w = g.V ? ss.s : fs.s, h = g.V ? fs.s : ss.s;
+      out += `<rect class="hit" data-s="${s}" data-f="${f}" x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${w.toFixed(1)}" height="${h.toFixed(1)}" fill="transparent"/>`;
     }
   }
-  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="自由指板，点击弦位发声">${out}</svg>`;
+  return `<svg${g.V?' class="vboard"':''} viewBox="0 0 ${g.W} ${g.H}" role="img" aria-label="自由指板，点击弦位发声${g.V?'（竖排）':''}">${out}</svg>`;
 }
 
 function renderCustom(){
@@ -1342,6 +1375,7 @@ const state = {
   neckChord:false,
   neckScale:false,
   custom:[],
+  orient:'h',
 };
 
 /* ========== 事件 ========== */
@@ -1389,6 +1423,12 @@ function init(){
   el('lefty').addEventListener('click', () => {
     state.lefty = !state.lefty;
     el('lefty').setAttribute('aria-pressed', String(state.lefty));
+    route();
+  });
+  el('orient').addEventListener('click', () => {
+    state.orient = state.orient === 'v' ? 'h' : 'v';
+    el('orient').setAttribute('aria-pressed', String(state.orient === 'v'));
+    document.querySelector('.page').classList.toggle('vert', state.orient === 'v');
     route();
   });
   document.querySelectorAll('.acc button').forEach(btn => {
