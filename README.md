@@ -1,5 +1,7 @@
 # 吉他指法查询器
 
+在线使用：https://eason-xi.github.io/guitar-fingering/
+
 单文件 HTML 的吉他和弦 / 音阶指法查询工具。双击 `index.html` 即可在浏览器里使用，无需构建、无需安装。
 
 ## 功能
